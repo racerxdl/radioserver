@@ -66,7 +66,7 @@ func main() {
 		MinimumFrequency:  frontend.MinimumFrequency(),
 		MaximumFrequency:  frontend.MaximumFrequency(),
 		Resolution:        uint32(frontend.GetResolution()),
-		DeviceName:        tools.GenerateDeviceName(name) ,
+		DeviceName:        tools.GenerateDeviceName(name),
 	}
 
 	frontend.SetSamplesAvailableCallback(serverState.PushSamples)

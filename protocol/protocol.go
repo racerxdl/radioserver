@@ -35,6 +35,12 @@ func SplitProtocolVersion(protocol uint64) Version {
 	}
 }
 
+var CurrentProtocolVersion = Version{
+	Major: 0,
+	Minor: 1,
+	Hash:  0,
+}
+
 const DefaultPort = 4050
 
 // region Internal States
@@ -44,6 +50,12 @@ const (
 )
 
 // endregion
+
+const (
+	Invalid = iota
+	OK
+	Error
+)
 
 // DeviceIds IDs
 const (
@@ -95,7 +107,6 @@ const (
 	SettingStreamingMode = iota
 	SettingStreamingEnabled
 	SettingGains
-	SettingIqFormat
 	SettingIqFrequency
 	SettingIqDecimation
 	SettingDigitalGain
@@ -109,7 +120,6 @@ var SettingNames = map[uint32]string{
 	SettingStreamingEnabled: "Streaming Enabled",
 	SettingGains:            "Gain",
 	SettingDigitalGain:      "Digital Gain",
-	SettingIqFormat:         "IQ Format",
 	SettingIqFrequency:      "IQ Frequency",
 	SettingIqDecimation:     "IQ Decimation",
 	SettingSmartFrequency:   "Smart Frequency",

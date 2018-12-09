@@ -106,9 +106,8 @@ func (f *TestSignalFrontend) loop() {
 	loopTimer := time.NewTimer(interval)
 
 	for f.running {
-		select {
-			case <- loopTimer.C:
-				f.work()
+		for range loopTimer.C {
+			f.work()
 		}
 	}
 }
@@ -118,11 +117,11 @@ func (f *TestSignalFrontend) work() {
 		var samples = make([]complex64, len(f.samplesBuffer))
 		copy(samples, f.samplesBuffer)
 		if f.currentGain > 0 {
-			var aGain = float32(math.Pow(10, float64(f.currentGain) / 10))
+			var aGain = float32(math.Pow(10, float64(f.currentGain)/10))
 			for j := 0; j < len(samples); j++ {
 				var r = real(samples[j])
 				var i = imag(samples[j])
-				samples[j] = complex(r * aGain, i * aGain)
+				samples[j] = complex(r*aGain, i*aGain)
 			}
 		}
 		f.cb(samples)
@@ -143,7 +142,7 @@ func (f *TestSignalFrontend) Stop() {
 	}
 }
 func (f *TestSignalFrontend) SetAntenna(value string) {}
-func (f *TestSignalFrontend) SetAGC(agc bool) {}
+func (f *TestSignalFrontend) SetAGC(agc bool)         {}
 func (f *TestSignalFrontend) SetGain(value uint8) {
 	f.currentGain = value
 }
