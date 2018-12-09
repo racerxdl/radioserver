@@ -6,6 +6,7 @@ import (
 	"github.com/racerxdl/radioserver/SLog"
 	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
+	"github.com/racerxdl/radioserver/tools"
 	"github.com/racerxdl/segdsp/dsp"
 	"os"
 	"os/signal"
@@ -41,8 +42,9 @@ func main() {
 	SLog.Info("Commit Hash: %s", commitHash)
 	SLog.Info("SIMD Mode: %s", dsp.GetSIMDMode())
 
-	var frontend = frontends.CreateAirspyFrontend(0)
+	//var frontend = frontends.CreateAirspyFrontend(0)
 	//var frontend = frontends.CreateLimeSDRFrontend(0)
+	var frontend = frontends.CreateTestSignalFrontend()
 	frontend.Init()
 	frontend.SetCenterFrequency(97700000)
 
@@ -51,13 +53,6 @@ func main() {
 	var name = frontend.GetShortName()
 
 	SLog.Info("Frontend: %s", frontend.GetName())
-
-	var deviceName [16]uint8
-
-	for i := 0; i < 15; i++ {
-		deviceName[i] = name[i]
-	}
-	deviceName[15] = 0x00
 
 	serverState.Frontend = frontend
 	serverState.CanControl = 0
@@ -71,7 +66,7 @@ func main() {
 		MinimumFrequency:  frontend.MinimumFrequency(),
 		MaximumFrequency:  frontend.MaximumFrequency(),
 		Resolution:        uint32(frontend.GetResolution()),
-		DeviceName:        deviceName,
+		DeviceName:        tools.GenerateDeviceName(name) ,
 	}
 
 	frontend.SetSamplesAvailableCallback(serverState.PushSamples)

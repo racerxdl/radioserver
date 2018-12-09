@@ -78,7 +78,7 @@ func handleConnection(c net.Conn) {
 	clientState.FullStop()
 	serverState.RemoveClient(clientState)
 	tcpSlog.Log("Connection closed from %s", clientState.Addr)
-	c.Close()
+	_ = c.Close()
 
 }
 
@@ -102,7 +102,7 @@ func runServer(stopSignal chan bool) {
 	go func() {
 		<-stopSignal
 		tcpSlog.Info("Received stop signal! Closing TCP Server...")
-		l.Close()
+		_ = l.Close()
 	}()
 
 	for tcpServerStatus {

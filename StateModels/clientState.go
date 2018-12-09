@@ -195,15 +195,14 @@ func (state *ClientState) SendIQ(samples interface{}, messageType uint32) {
 }
 
 func (state *ClientState) updateSync() {
+	var halfSampleRate = state.ServerState.Frontend.GetSampleRate() / 2
+	var centerFreq = state.CGS.IQCenterFrequency
+
 	state.SyncInfo.SmartCenterFrequency = state.CGS.SmartCenterFrequency
 	state.SyncInfo.IQCenterFrequency = state.CGS.IQCenterFrequency
 	state.SyncInfo.AllowControl = state.ServerState.CanControl
 	state.SyncInfo.Gains = [3]uint32{uint32(state.ServerState.Frontend.GetGain()), 0, 0}
 	state.SyncInfo.DeviceCenterFrequency = state.ServerState.Frontend.GetCenterFrequency()
-
-	var halfSampleRate = state.ServerState.Frontend.GetSampleRate() / 2
-	var centerFreq = state.CGS.IQCenterFrequency
-
 	state.SyncInfo.MaximumIQCenterFrequency = centerFreq + halfSampleRate
 	state.SyncInfo.MinimumIQCenterFrequency = centerFreq - halfSampleRate
 	state.SyncInfo.MaximumSmartFrequency = centerFreq + halfSampleRate

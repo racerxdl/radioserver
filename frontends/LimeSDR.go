@@ -118,7 +118,7 @@ func (f *LimeSDRFrontend) MaximumDecimationStages() uint32 {
 }
 
 func (f *LimeSDRFrontend) GetDeviceType() uint32 {
-	return protocol.DeviceAirspyOne // TODO: Change to Lime
+	return protocol.DeviceLimeSDRUSB
 }
 
 func (f *LimeSDRFrontend) GetDeviceSerial() string {

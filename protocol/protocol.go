@@ -48,11 +48,10 @@ const (
 // DeviceIds IDs
 const (
 	DeviceInvalid = iota
+	DeviceTestSignal
 	DeviceAirspyOne
 	DeviceAirspyHf
 	DeviceRtlsdr
-
-	// Radio Server Standard
 	DeviceLimeSDRUSB
 	DeviceLimeSDRMini
 	DeviceSpyServer
@@ -62,6 +61,7 @@ const (
 // DeviceNames names of the device
 const (
 	DeviceInvalidName     = "Invalid Device"
+	DeviceTestSignalName  = "Test Signal Generator"
 	DeviceAirspyOneName   = "Airspy Mini / R2"
 	DeviceAirspyHFName    = "Airspy HF / HF+"
 	DeviceRtlsdrName      = "RTLSDR"
@@ -74,6 +74,7 @@ const (
 // DeviceName list of device names by their ids
 var DeviceName = map[uint32]string{
 	DeviceInvalid:     DeviceInvalidName,
+	DeviceTestSignal:  DeviceTestSignalName,
 	DeviceAirspyOne:   DeviceAirspyOneName,
 	DeviceAirspyHf:    DeviceAirspyHFName,
 	DeviceRtlsdr:      DeviceRtlsdrName,

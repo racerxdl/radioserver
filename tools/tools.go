@@ -156,3 +156,16 @@ func GenerateTranslatorTaps(decimation, sampleRate uint32) []float32 {
 	var outputSampleRate = float64(sampleRate)
 	return dsp.MakeLowPassFixed(1, outputSampleRate, outputSampleRate/(2*float64(decimation)), 31)
 }
+
+func GenerateDeviceName(name string) [16]uint8 {
+	var s = int(Min(uint32(len(name)), 15))
+	var o [16]uint8
+	for i := 0; i < s; i++ {
+		o[i] = name[i]
+	}
+	for i := s; i < 16; i++ {
+		o[i] = 0x00
+	}
+
+	return o
+}
