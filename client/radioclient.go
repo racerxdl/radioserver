@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/racerxdl/radioserver/SLog"
 	"github.com/racerxdl/radioserver/protocol"
-	"log"
 	"net"
 	"time"
 )
@@ -18,6 +18,7 @@ func min(a, b uint32) uint32 {
 }
 
 var softwareName = "RadioClient"
+var slog = SLog.Scope("RadioClient")
 
 func SetSoftwareName(name string) {
 	softwareName = name
@@ -74,13 +75,13 @@ func MakeRadioClientByFullHS(fullhostname string) *RadioClient {
 		terminated:           false,
 		gotDeviceInfo:        false,
 		gotSyncInfo:          false,
-		parserPhase:          protocol.ParserAcquiringHeader,
+		parserPhase:          protocol.GettingHeader,
 		Streaming:            false,
 		CanControl:           false,
 		IsConnected:          false,
 		availableSampleRates: []uint32{},
 		headerBuffer:         make([]uint8, protocol.MessageHeaderSize),
-		streamingMode:        protocol.StreamTypeIQ,
+		streamingMode:        protocol.TypeIQ,
 		smartDecimation:      1,
 	}
 	s.cleanup()
@@ -95,13 +96,13 @@ func MakeRadioClient(hostname string, port int) *RadioClient {
 		terminated:           false,
 		gotDeviceInfo:        false,
 		gotSyncInfo:          false,
-		parserPhase:          protocol.ParserAcquiringHeader,
+		parserPhase:          protocol.GettingHeader,
 		Streaming:            false,
 		CanControl:           false,
 		IsConnected:          false,
 		availableSampleRates: []uint32{},
 		headerBuffer:         make([]uint8, protocol.MessageHeaderSize),
-		streamingMode:        protocol.StreamTypeIQ,
+		streamingMode:        protocol.TypeIQ,
 		smartDecimation:      1,
 	}
 	s.cleanup()
@@ -109,15 +110,12 @@ func MakeRadioClient(hostname string, port int) *RadioClient {
 }
 
 // region Private Methods
-
-// sayHello sends a Hello Command to the server, with the Software ID (in this case, spy2go)
-func (f *RadioClient) sayHello() bool {
+func (f *RadioClient) sendHello() bool {
 	var softwareVersionBytes = []byte(softwareName)
 
 	buf := new(bytes.Buffer)
 	_ = binary.Write(buf, binary.LittleEndian, protocol.CurrentProtocolVersion.ToUint64())
 	_ = binary.Write(buf, binary.LittleEndian, softwareVersionBytes)
-
 	return f.sendCommand(protocol.CmdHello, buf.Bytes())
 }
 
@@ -137,7 +135,7 @@ func (f *RadioClient) cleanup() {
 	f.lastSequenceNumber = 0xFFFFFFFF
 	f.droppedBuffers = 0
 	f.downStreamBytes = 0
-	f.parserPhase = protocol.ParserAcquiringHeader
+	f.parserPhase = protocol.GettingHeader
 	f.parserPosition = 0
 
 	f.Streaming = false
@@ -175,21 +173,23 @@ func (f *RadioClient) setSetting(settingType uint32, params []uint32) bool {
 }
 
 // sendCommand sends a command to RadioClient
-func (f *RadioClient) sendCommand(cmd uint32, args []uint8) bool {
+func (f *RadioClient) sendCommand(cmd uint8, args []uint8) bool {
 	if f.client == nil {
 		return false
 	}
 
-	var argsLen = uint32(0)
-	if args != nil {
-		argsLen += uint32(len(args))
-	}
+	var c = []uint8{cmd}
+	args = append(c, args...)
 
+	var argsLen = uint32(len(args))
 	var buff = new(bytes.Buffer)
 
-	var header = protocol.CommandHeader{
-		CommandType: cmd,
-		BodySize:    argsLen,
+	var header = protocol.MessageHeader{
+		ProtocolVersion: protocol.CurrentProtocolVersion.ToUint64(),
+		MessageType:     protocol.TypeCommand,
+		PacketNumber:    0,
+		Reserved:        0,
+		BodySize:        argsLen,
 	}
 
 	err := binary.Write(buff, binary.LittleEndian, &header)
@@ -214,23 +214,21 @@ func (f *RadioClient) sendCommand(cmd uint32, args []uint8) bool {
 
 func (f *RadioClient) parseMessage(buffer []uint8) {
 	f.downStreamBytes++
-
 	var consumed uint32
 	for len(buffer) > 0 && !f.terminated {
-		if f.parserPhase == protocol.ParserAcquiringHeader {
-			for f.parserPhase == protocol.ParserReadingData && len(buffer) > 0 {
+		if f.parserPhase == protocol.GettingHeader {
+			for f.parserPhase == protocol.GettingHeader && len(buffer) > 0 {
 				consumed = f.parseHeader(buffer)
 				buffer = buffer[consumed:]
 			}
 
-			if f.parserPhase == protocol.ParserReadingData {
+			if f.parserPhase == protocol.ReadingData {
 				clientMajor := protocol.CurrentProtocolVersion.Major
 				clientMinor := protocol.CurrentProtocolVersion.Minor
-
 				serverVersion := protocol.SplitProtocolVersion(f.header.ProtocolVersion)
 
 				if clientMajor != serverVersion.Major || clientMinor != serverVersion.Minor {
-					panic("Server is running an unsupported protocol version.")
+					panic(fmt.Sprintf("Server is running an unsupported protocol version. (%d.%d) != (%d.%d)", clientMajor, clientMinor, serverVersion.Major, serverVersion.Minor))
 				}
 
 				if f.header.BodySize > protocol.MaxMessageBodySize {
@@ -241,16 +239,16 @@ func (f *RadioClient) parseMessage(buffer []uint8) {
 			}
 		}
 
-		if f.parserPhase == protocol.ParserReadingData {
+		if f.parserPhase == protocol.ReadingData {
 			consumed = f.parseBody(buffer)
 			buffer = buffer[consumed:]
 
-			if f.parserPhase == protocol.ParserAcquiringHeader {
+			if f.parserPhase == protocol.GettingHeader {
 				gap := f.header.PacketNumber - f.lastSequenceNumber - 1
 				f.lastSequenceNumber = f.header.PacketNumber
 				f.droppedBuffers += gap
 				if gap > 0 {
-					log.Printf("Lost %d packets from Radio Server!\n", gap)
+					slog.Debug("Lost %d packets from Radio Server!\n", gap)
 				}
 				f.handleNewMessage()
 			}
@@ -277,9 +275,8 @@ func (f *RadioClient) parseHeader(buffer []uint8) uint32 {
 			if err != nil {
 				panic(err)
 			}
-
 			if f.header.BodySize > 0 {
-				f.parserPhase = protocol.ParserReadingData
+				f.parserPhase = protocol.ReadingData
 			}
 
 			return consumed
@@ -303,7 +300,7 @@ func (f *RadioClient) parseBody(buffer []uint8) uint32 {
 
 		if f.parserPosition == f.header.BodySize {
 			f.parserPosition = 0
-			f.parserPhase = protocol.ParserAcquiringHeader
+			f.parserPhase = protocol.GettingHeader
 			return consumed
 		}
 	}
@@ -338,10 +335,10 @@ func (f *RadioClient) processClientSync() {
 	f.DeviceCenterFrequency = clientSync.DeviceCenterFrequency
 	f.SmartCenterFrequency = clientSync.SmartCenterFrequency
 
-	if f.streamingMode == protocol.StreamTypeCombined || f.streamingMode == protocol.StreamTypeSmartIQ {
+	if f.streamingMode == protocol.TypeCombined || f.streamingMode == protocol.TypeSmartIQ {
 		f.MinimumTunableFrequency = clientSync.MinimumSmartFrequency
 		f.MaximumTunableFrequency = clientSync.MaximumSmartFrequency
-	} else if f.streamingMode == protocol.StreamTypeIQ {
+	} else if f.streamingMode == protocol.TypeIQ {
 		f.MinimumTunableFrequency = clientSync.MinimumIQCenterFrequency
 		f.MaximumTunableFrequency = clientSync.MaximumIQCenterFrequency
 	}
@@ -349,7 +346,7 @@ func (f *RadioClient) processClientSync() {
 	f.gotSyncInfo = true
 
 	if f.callback != nil {
-		f.callback.OnData(protocol.MsgTypeClientSync, nil)
+		f.callback.OnData(DeviceSync, nil)
 	}
 }
 
@@ -401,15 +398,15 @@ func (f *RadioClient) handleNewMessage() {
 	}
 
 	switch f.header.MessageType {
-	case protocol.MsgTypeDeviceInfo:
+	case protocol.TypeDeviceInfo:
 		f.processDeviceInfo()
-	case protocol.MsgTypeClientSync:
+	case protocol.TypeClientSync:
 		f.processClientSync()
-	case protocol.MsgTypeIQ:
+	case protocol.TypeIQ:
 		f.processIQ()
-	case protocol.MsgTypeSmartIQ:
+	case protocol.TypeSmartIQ:
 		f.processSmartIQ()
-	case protocol.MsgTypeReadSetting:
+	case protocol.TypeReadSetting:
 		f.processReadSetting()
 	}
 }
@@ -423,7 +420,7 @@ func (f *RadioClient) setStreamState() bool {
 }
 
 func (f *RadioClient) threadLoop() {
-	f.parserPhase = protocol.ParserAcquiringHeader
+	f.parserPhase = protocol.GettingHeader
 	f.parserPosition = 0
 
 	buffer := make([]uint8, 64*1024)
@@ -437,7 +434,7 @@ func (f *RadioClient) threadLoop() {
 
 		if err != nil {
 			if f.routineRunning && !f.terminated {
-				log.Println("Error receiving data: ", err)
+				slog.Debug("Error receiving data: %s", err)
 			}
 			break
 		}
@@ -446,7 +443,7 @@ func (f *RadioClient) threadLoop() {
 			f.parseMessage(sl)
 		}
 	}
-	log.Println("Thread closing")
+	slog.Debug("Thread closing")
 	f.routineRunning = false
 	f.cleanup()
 }
@@ -462,7 +459,7 @@ func (f *RadioClient) GetName() string {
 // Start starts the streaming process (if not already started)
 func (f *RadioClient) Start() {
 	if !f.Streaming {
-		log.Println("Starting streaming")
+		slog.Debug("Starting streaming")
 		f.Streaming = true
 		f.downStreamBytes = 0
 		f.setStreamState()
@@ -472,6 +469,7 @@ func (f *RadioClient) Start() {
 // Stop stop the streaming process (if started)
 func (f *RadioClient) Stop() {
 	if f.Streaming {
+		slog.Debug("Stopping")
 		f.Streaming = false
 		f.downStreamBytes = 0
 		f.setStreamState()
@@ -485,7 +483,7 @@ func (f *RadioClient) Connect() {
 		return
 	}
 
-	log.Println("Trying to connect")
+	slog.Debug("Trying to connect")
 	conn, err := net.Dial("tcp", f.fullhostname)
 	if err != nil {
 		panic(err)
@@ -494,7 +492,7 @@ func (f *RadioClient) Connect() {
 	f.client = conn
 	f.IsConnected = true
 
-	f.sayHello()
+	f.sendHello()
 	f.cleanup()
 
 	f.terminated = false
@@ -506,7 +504,7 @@ func (f *RadioClient) Connect() {
 	errorMsg := ""
 
 	go f.threadLoop()
-	log.Println("Connected. Waiting for device info.")
+	slog.Debug("Connected. Waiting for device info.")
 	for i := 0; i < 1000 && !hasError; i++ {
 		if f.gotDeviceInfo {
 			if f.deviceInfo.DeviceType == protocol.DeviceInvalid {
@@ -533,7 +531,7 @@ func (f *RadioClient) Connect() {
 
 // Disconnect disconnects from current connected RadioClient.
 func (f *RadioClient) Disconnect() {
-	log.Println("Disconnecting")
+	slog.Debug("Disconnecting")
 	f.terminated = true
 	if f.IsConnected {
 		_ = f.client.Close()
@@ -557,7 +555,7 @@ func (f *RadioClient) SetSampleRate(sampleRate uint32) uint32 {
 			f.channelDecimation = i
 			f.setSetting(protocol.SettingIqDecimation, []uint32{i})
 			f.currentSampleRate = sampleRate
-			if (f.streamingMode == protocol.StreamTypeSmartIQ || f.streamingMode == protocol.StreamTypeCombined) && f.currentSmartSampleRate == 0 {
+			if (f.streamingMode == protocol.TypeSmartIQ || f.streamingMode == protocol.TypeCombined) && f.currentSmartSampleRate == 0 {
 				f.SetSmartSampleRate(sampleRate)
 			}
 			return sampleRate
@@ -592,7 +590,7 @@ func (f *RadioClient) SetCenterFrequency(centerFrequency uint32) uint32 {
 	if f.channelCenterFrequency != centerFrequency {
 		f.setSetting(protocol.SettingIqFrequency, []uint32{centerFrequency})
 		f.channelCenterFrequency = centerFrequency
-		if (f.streamingMode == protocol.StreamTypeSmartIQ || f.streamingMode == protocol.StreamTypeCombined) && f.SmartCenterFrequency == 0 {
+		if (f.streamingMode == protocol.TypeSmartIQ || f.streamingMode == protocol.TypeCombined) && f.SmartCenterFrequency == 0 {
 			f.SetSmartCenterFrequency(centerFrequency)
 		}
 	}
@@ -600,8 +598,8 @@ func (f *RadioClient) SetCenterFrequency(centerFrequency uint32) uint32 {
 	return f.channelCenterFrequency
 }
 
-// GetDisplayCenterFrequency returns the Smart IQ Center Frequency in Hertz
-func (f *RadioClient) GetDisplayCenterFrequency() uint32 {
+// GetSmartCenterFrequency returns the Smart IQ Center Frequency in Hertz
+func (f *RadioClient) GetSmartCenterFrequency() uint32 {
 	return f.SmartCenterFrequency
 }
 
@@ -622,7 +620,7 @@ func (f *RadioClient) SetStreamingMode(streamMode uint32) {
 		f.streamingMode = streamMode
 		f.setSetting(protocol.SettingStreamingMode, []uint32{streamMode})
 
-		if f.streamingMode == protocol.StreamTypeSmartIQ || f.streamingMode == protocol.StreamTypeCombined {
+		if f.streamingMode == protocol.TypeSmartIQ || f.streamingMode == protocol.TypeCombined {
 			if f.SmartCenterFrequency == 0 {
 				f.SetSmartCenterFrequency(f.GetCenterFrequency())
 			}
@@ -678,8 +676,8 @@ func (f *RadioClient) SetSmartDecimation(decimation uint32) uint32 {
 	return decimation
 }
 
-// GetDisplaySampleRate returns the sample rate of Smart IQ in Hertz
-func (f *RadioClient) GetDisplaySampleRate() uint32 {
+// GetSmartSampleRate returns the sample rate of Smart IQ in Hertz
+func (f *RadioClient) GetSmartSampleRate() uint32 {
 	return f.currentSmartSampleRate
 }
 

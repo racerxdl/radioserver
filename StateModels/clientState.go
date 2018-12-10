@@ -48,8 +48,8 @@ type ClientState struct {
 	ServerState   *ServerState
 
 	// Command State
-	Cmd            protocol.CommandHeader
-	CmdBody        []uint8
+	Message        protocol.MessageHeader
+	MessageBody    []uint8
 	ParserPosition uint32
 	SyncInfo       protocol.ClientSync
 
@@ -64,7 +64,7 @@ func CreateClientState(centerFrequency uint32) *ClientState {
 	var cs = &ClientState{
 		UUID:           uuid.New().String(),
 		Buffer:         make([]uint8, 64*1024),
-		CurrentState:   protocol.ParserAcquiringHeader,
+		CurrentState:   protocol.GettingHeader,
 		ConnectedSince: time.Now(),
 		ReceivedBytes:  0,
 		SentBytes:      0,
@@ -76,7 +76,7 @@ func CreateClientState(centerFrequency uint32) *ClientState {
 		HeaderBuffer:   make([]uint8, protocol.MessageHeaderSize),
 		CGS: ChannelGeneratorState{
 			Streaming:            false,
-			StreamingMode:        protocol.StreamTypeIQ,
+			StreamingMode:        protocol.TypeNone,
 			IQCenterFrequency:    centerFrequency,
 			IQDecimation:         0,
 			SmartIQDecimation:    0,
@@ -151,14 +151,14 @@ func (state *ClientState) onSmart(samples []complex64) {
 	defer state.Unlock()
 
 	if samplesToSend != nil {
-		var data = CreateDataPacket(state, protocol.MsgTypeSmartIQ, samplesToSend)
+		var data = CreateDataPacket(state, protocol.TypeSmartIQ, samplesToSend)
 		state.SendData(data)
 	}
 }
 
 func (state *ClientState) onIQ(samples []complex64) {
 	samplesToSend := tools.Complex64ToInt16(samples)
-	msgType := protocol.MsgTypeIQ
+	msgType := protocol.TypeIQ
 
 	if samplesToSend != nil {
 		state.SendIQ(samplesToSend, uint32(msgType))

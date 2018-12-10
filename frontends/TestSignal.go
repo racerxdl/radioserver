@@ -2,6 +2,7 @@ package frontends
 
 import (
 	"fmt"
+	"github.com/racerxdl/radioserver/SLog"
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/segdsp/dsp"
 	"math"
@@ -10,6 +11,7 @@ import (
 )
 
 var testSignalSampleRate = 10e6
+var testSignalLog = SLog.Scope("TestSignal Frontend")
 
 type TestSignalFrontend struct {
 	cb SamplesCallback
@@ -103,10 +105,10 @@ func (f *TestSignalFrontend) GetAvailableSampleRates() []uint32 {
 
 func (f *TestSignalFrontend) loop() {
 	interval := time.Duration((1e9 * float64(len(f.samplesBuffer))) / testSignalSampleRate)
-	loopTimer := time.NewTimer(interval)
-
+	loopTicker := time.NewTicker(interval)
+	testSignalLog.Debug("Period: %v", interval)
 	for f.running {
-		for range loopTimer.C {
+		for range loopTicker.C {
 			f.work()
 		}
 	}
@@ -130,14 +132,14 @@ func (f *TestSignalFrontend) work() {
 
 func (f *TestSignalFrontend) Start() {
 	if !f.running {
-		limeLog.Info("Starting")
+		testSignalLog.Info("Starting")
 		f.running = true
 		go f.loop()
 	}
 }
 func (f *TestSignalFrontend) Stop() {
 	if f.running {
-		limeLog.Info("Stopping")
+		testSignalLog.Info("Stopping")
 		f.running = false
 	}
 }

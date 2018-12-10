@@ -12,7 +12,7 @@ func CreateDeviceInfo(state *ClientState) []uint8 {
 
 	var header = protocol.MessageHeader{
 		ProtocolVersion: state.ServerVersion.ToUint64(),
-		MessageType:     protocol.MsgTypeDeviceInfo,
+		MessageType:     protocol.TypeDeviceInfo,
 		PacketNumber:    uint32(state.SentPackets & 0xFFFFFFFF),
 		BodySize:        uint32(len(bodyData)),
 	}
@@ -26,7 +26,7 @@ func CreateClientSync(state *ClientState) []uint8 {
 
 	var header = protocol.MessageHeader{
 		ProtocolVersion: state.ServerVersion.ToUint64(),
-		MessageType:     protocol.MsgTypeClientSync,
+		MessageType:     protocol.TypeClientSync,
 		PacketNumber:    uint32(state.SentPackets & 0xFFFFFFFF),
 		BodySize:        uint32(len(bodyData)),
 	}
@@ -43,7 +43,7 @@ func CreatePong(state *ClientState) []uint8 {
 
 	var header = protocol.MessageHeader{
 		ProtocolVersion: state.ServerVersion.ToUint64(),
-		MessageType:     protocol.MsgTypePong,
+		MessageType:     protocol.TypePong,
 		PacketNumber:    uint32(state.SentPackets & 0xFFFFFFFF),
 		BodySize:        uint32(len(bodyData)),
 	}

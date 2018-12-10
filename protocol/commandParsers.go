@@ -11,7 +11,7 @@ func ParseCmdHelloBody(data []uint8) (Version, string) {
 	buf := bytes.NewReader(data)
 	_ = binary.Read(buf, binary.LittleEndian, &protocolVersion)
 
-	clientName = string(data[4:])
+	clientName = string(data[8:])
 
 	return SplitProtocolVersion(protocolVersion), clientName
 }

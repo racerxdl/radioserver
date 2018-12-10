@@ -96,13 +96,12 @@ func (cg *ChannelGenerator) doWork() {
 
 	for cg.inputFifo.Len() > 0 {
 		var samples = cg.inputFifo.Next().([]complex64)
+		if cg.iqEnabled {
+			cg.processIQ(samples)
+		}
 
 		if cg.smartIQEnabled {
 			cg.processSmart(samples)
-		}
-
-		if cg.iqEnabled {
-			cg.processIQ(samples)
 		}
 	}
 }
@@ -171,8 +170,8 @@ func (cg *ChannelGenerator) UpdateSettings(state *ClientState) {
 	var deviceFrequency = state.ServerState.Frontend.GetCenterFrequency()
 	var deviceSampleRate = state.ServerState.Frontend.GetSampleRate()
 
-	cg.iqEnabled = state.CGS.StreamingMode == protocol.StreamTypeIQ || state.CGS.StreamingMode == protocol.StreamTypeCombined
-	cg.smartIQEnabled = state.CGS.StreamingMode == protocol.StreamTypeSmartIQ || state.CGS.StreamingMode == protocol.StreamTypeCombined
+	cg.iqEnabled = state.CGS.StreamingMode == protocol.TypeIQ || state.CGS.StreamingMode == protocol.TypeCombined
+	cg.smartIQEnabled = state.CGS.StreamingMode == protocol.TypeSmartIQ || state.CGS.StreamingMode == protocol.TypeCombined
 
 	// region IQ Channel
 	if cg.iqEnabled {

@@ -7,7 +7,7 @@ import (
 )
 
 func RunCmdHello(state *StateModels.ClientState) {
-	version, name := protocol.ParseCmdHelloBody(state.CmdBody)
+	version, name := protocol.ParseCmdHelloBody(state.MessageBody[1:])
 	state.Info("Received Hello: %s - %s", version.String(), name)
 	state.Name = name
 	state.ClientVersion = version
@@ -29,7 +29,7 @@ func RunCmdGetSetting(state *StateModels.ClientState) {
 }
 
 func RunCmdSetSetting(state *StateModels.ClientState) {
-	setting, args := protocol.ParseCmdSetSettingBody(state.CmdBody)
+	setting, args := protocol.ParseCmdSetSettingBody(state.MessageBody[1:])
 
 	settingName := protocol.SettingNames[setting]
 
@@ -60,7 +60,7 @@ func RunCmdSetSetting(state *StateModels.ClientState) {
 }
 
 func RunCmdPing(state *StateModels.ClientState) {
-	timestamp := protocol.ParseCmdPingBody(state.CmdBody)
+	timestamp := protocol.ParseCmdPingBody(state.MessageBody[1:])
 	delta := float64(time.Now().UnixNano()-timestamp) / 1e6
 	state.Debug("Received PING %.2f ms", delta)
 

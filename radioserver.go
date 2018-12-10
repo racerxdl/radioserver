@@ -42,11 +42,11 @@ func main() {
 	SLog.Info("Commit Hash: %s", commitHash)
 	SLog.Info("SIMD Mode: %s", dsp.GetSIMDMode())
 
-	//var frontend = frontends.CreateAirspyFrontend(0)
+	var frontend = frontends.CreateAirspyFrontend(0)
 	//var frontend = frontends.CreateLimeSDRFrontend(0)
-	var frontend = frontends.CreateTestSignalFrontend()
+	//var frontend = frontends.CreateTestSignalFrontend()
 	frontend.Init()
-	frontend.SetCenterFrequency(97700000)
+	frontend.SetCenterFrequency(106300000)
 
 	defer frontend.Destroy()
 

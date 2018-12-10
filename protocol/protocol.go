@@ -1,8 +1,8 @@
 package protocol
 
 import (
+	"encoding/binary"
 	"fmt"
-	"unsafe"
 )
 
 type Version struct {
@@ -45,8 +45,8 @@ const DefaultPort = 4050
 
 // region Internal States
 const (
-	ParserAcquiringHeader = iota
-	ParserReadingData
+	GettingHeader = iota
+	ReadingData
 )
 
 // endregion
@@ -68,6 +68,36 @@ const (
 	DeviceLimeSDRMini
 	DeviceSpyServer
 	DeviceHackRF
+)
+
+const (
+	TypeNone = iota
+	TypeDeviceInfo
+	TypeClientSync
+	TypePong
+	TypeReadSetting
+	TypeIQ
+	TypeSmartIQ
+	TypeCombined
+	TypeCommand
+)
+
+const (
+	CmdHello      = 0
+	CmdGetSetting = 1
+	CmdSetSetting = 2
+	CmdPing       = 3
+)
+
+const (
+	SettingStreamingMode = iota
+	SettingStreamingEnabled
+	SettingGains
+	SettingIqFrequency
+	SettingIqDecimation
+	SettingDigitalGain
+	SettingSmartFrequency
+	SettingSmartDecimation
 )
 
 // DeviceNames names of the device
@@ -95,24 +125,6 @@ var DeviceName = map[uint32]string{
 	DeviceHackRF:      DeviceHackRFName,
 	DeviceSpyServer:   DeviceSpyserverName,
 }
-
-const (
-	CmdHello      = 0
-	CmdGetSetting = 1
-	CmdSetSetting = 2
-	CmdPing       = 3
-)
-
-const (
-	SettingStreamingMode = iota
-	SettingStreamingEnabled
-	SettingGains
-	SettingIqFrequency
-	SettingIqDecimation
-	SettingDigitalGain
-	SettingSmartFrequency
-	SettingSmartDecimation
-)
 
 // SettingNames list of device names by their ids
 var SettingNames = map[uint32]string{
@@ -163,38 +175,12 @@ func SettingAffectsGlobal(setting uint32) bool {
 	return false
 }
 
-const (
-	StreamTypeStatus = iota
-	StreamTypeIQ
-	StreamTypeSmartIQ
-	StreamTypeCombined
-)
-
-const (
-	StreamFormatInvalid = iota
-	StreamFormatInt16
-	StreamFormatFloat
-)
-
-const (
-	MsgTypeDeviceInfo = iota
-	MsgTypeClientSync
-	MsgTypePong
-	MsgTypeReadSetting
-	MsgTypeIQ
-	MsgTypeSmartIQ
-)
-
 type MessageHeader struct {
 	PacketNumber    uint32
 	ProtocolVersion uint64
 	MessageType     uint32
+	Reserved        uint32
 	BodySize        uint32
-}
-
-type CommandHeader struct {
-	CommandType uint32
-	BodySize    uint32
 }
 
 type DeviceInfo struct {
@@ -230,6 +216,6 @@ type ReadSettingPacket struct {
 	BodySize uint32
 }
 
-const MessageHeaderSize = uint32(unsafe.Sizeof(MessageHeader{}))
-const CommandHeaderSize = uint32(unsafe.Sizeof(CommandHeader{}))
+var MessageHeaderSize = uint32(binary.Size(MessageHeader{}))
+
 const MaxMessageBodySize = 1 << 20
