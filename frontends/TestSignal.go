@@ -108,7 +108,7 @@ func (f *TestSignalFrontend) MaximumDecimationStages() uint32 {
 	return 8
 }
 
-func (f *TestSignalFrontend) GetDeviceType() uint32 {
+func (f *TestSignalFrontend) GetDeviceType() protocol.DeviceType {
 	return protocol.DeviceTestSignal
 }
 

@@ -5,37 +5,31 @@ import (
 	"fmt"
 )
 
-type Version struct {
-	Major uint8
-	Minor uint8
-	Hash  uint32
-}
-
-func (v *Version) String() string {
+func (v *VersionData) AsString() string {
 	return fmt.Sprintf("%d.%d - %08x", v.Major, v.Minor, v.Hash)
 }
 
-func (v *Version) ToUint64() uint64 {
+func (v *VersionData) ToUint64() uint64 {
 	return GenProtocolVersion(*v)
 }
 
-func GenProtocolVersion(version Version) uint64 {
+func GenProtocolVersion(version VersionData) uint64 {
 	return uint64(((uint64(version.Major)) << 40) | ((uint64(version.Minor)) << 32) | (uint64(version.Hash)))
 }
 
-func SplitProtocolVersion(protocol uint64) Version {
-	major := uint8(((protocol & (0xFF << 40)) >> 40) & 0xFF)
-	minor := uint8(((protocol & (0xFF << 32)) >> 32) & 0xFF)
+func SplitProtocolVersion(protocol uint64) VersionData {
+	major := uint32(((protocol & (0xFF << 40)) >> 40) & 0xFF)
+	minor := uint32(((protocol & (0xFF << 32)) >> 32) & 0xFF)
 	hash := uint32(protocol & 0xFFFFFFFF)
 
-	return Version{
+	return VersionData{
 		Major: major,
 		Minor: minor,
 		Hash:  hash,
 	}
 }
 
-var CurrentProtocolVersion = Version{
+var CurrentProtocolVersion = VersionData{
 	Major: 0,
 	Minor: 1,
 	Hash:  0,
@@ -181,18 +175,6 @@ type MessageHeader struct {
 	MessageType     uint32
 	Reserved        uint32
 	BodySize        uint32
-}
-
-type DeviceInfo struct {
-	DeviceType        uint32
-	DeviceSerial      uint32
-	DeviceName        [16]uint8
-	MaximumSampleRate uint32
-	DecimationStages  uint32
-	MaximumGainValue  uint32
-	MinimumFrequency  uint32
-	MaximumFrequency  uint32
-	Resolution        uint32
 }
 
 type ClientSync struct {

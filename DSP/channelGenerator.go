@@ -1,8 +1,9 @@
-package StateModels
+package DSP
 
 import (
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/go.fifo"
+	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/radioserver/tools"
 	"github.com/racerxdl/segdsp/dsp"
@@ -140,9 +141,6 @@ func (cg *ChannelGenerator) notify() {
 func (cg *ChannelGenerator) Start() {
 	if !cg.running {
 		cgLog.Info("Starting Channel Generator")
-		if cg.iqFrequencyTranslator == nil && cg.smartFrequencyTranslator == nil {
-			cgLog.Fatal("Trying to start Channel Generator without frequencyTranslator for either IQ or Smart")
-		}
 		cg.running = true
 		go cg.routine()
 		go func() {
@@ -162,42 +160,67 @@ func (cg *ChannelGenerator) Stop() {
 	}
 }
 
-func (cg *ChannelGenerator) UpdateSettings(state *ClientState) {
+func (cg *ChannelGenerator) StartIQ() {
+	cg.settingsMutex.Lock()
+	defer cg.settingsMutex.Unlock()
+	cgLog.Info("Enabling IQ")
+	cg.iqEnabled = true
+}
+
+func (cg *ChannelGenerator) StopIQ() {
+	cg.settingsMutex.Lock()
+	defer cg.settingsMutex.Unlock()
+	cgLog.Info("Disabling IQ")
+	cg.iqEnabled = false
+
+	if !cg.smartIQEnabled && cg.running {
+		go cg.Stop()
+	}
+}
+
+func (cg *ChannelGenerator) StartSmartIQ() {
+	cg.settingsMutex.Lock()
+	defer cg.settingsMutex.Unlock()
+	cgLog.Info("Enabling SmartIQ")
+	cg.smartIQEnabled = true
+
+}
+
+func (cg *ChannelGenerator) StopSmartIQ() {
+	cg.settingsMutex.Lock()
+	defer cg.settingsMutex.Unlock()
+	cgLog.Info("Disabling SmartIQ")
+	cg.smartIQEnabled = false
+
+	if !cg.iqEnabled && cg.running {
+		go cg.Stop()
+	}
+}
+
+func (cg *ChannelGenerator) UpdateSettings(channelType protocol.ChannelType, frontend frontends.Frontend, state *protocol.ChannelConfig) {
 	cg.settingsMutex.Lock()
 	cgLog.Info("Updating settings")
 
-	var deviceFrequency = state.ServerState.Frontend.GetCenterFrequency()
-	var deviceSampleRate = state.ServerState.Frontend.GetSampleRate()
+	var deviceFrequency = frontend.GetCenterFrequency()
+	var deviceSampleRate = frontend.GetSampleRate()
 
-	cg.iqEnabled = state.CGS.StreamingMode == protocol.TypeIQ || state.CGS.StreamingMode == protocol.TypeCombined
-	cg.smartIQEnabled = state.CGS.StreamingMode == protocol.TypeSmartIQ || state.CGS.StreamingMode == protocol.TypeCombined
-
-	// region IQ Channel
-	if cg.iqEnabled {
-		var iqDecimationNumber = tools.StageToNumber(state.CGS.IQDecimation)
+	if channelType == protocol.ChannelType_IQ {
+		var iqDecimationNumber = tools.StageToNumber(state.DecimationStage)
 		var iqFtTaps = tools.GenerateTranslatorTaps(iqDecimationNumber, deviceSampleRate)
-		var iqDeltaFrequency = float32(state.CGS.IQCenterFrequency) - float32(deviceFrequency)
+		var iqDeltaFrequency = float32(state.CenterFrequency) - float32(deviceFrequency)
 		cgLog.Debug("IQ Delta Frequency: %.0f", iqDeltaFrequency)
 		cg.iqFrequencyTranslator = dsp.MakeFrequencyTranslator(int(iqDecimationNumber), iqDeltaFrequency, float32(deviceSampleRate), iqFtTaps)
 	}
-	// endregion
-	// region Smart IQ Channel
-	if cg.smartIQEnabled {
-		var smartIQDecimationNumber = tools.StageToNumber(state.CGS.SmartIQDecimation)
+
+	if channelType == protocol.ChannelType_SmartIQ {
+		var smartIQDecimationNumber = tools.StageToNumber(state.DecimationStage)
 		var smartFtTaps = tools.GenerateTranslatorTaps(smartIQDecimationNumber, deviceSampleRate)
-		var smartIQDeltaFrequency = float32(state.CGS.SmartCenterFrequency) - float32(deviceFrequency)
+		var smartIQDeltaFrequency = float32(state.CenterFrequency) - float32(deviceFrequency)
 		cgLog.Debug("SmartIQ Delta Frequency: %.0f", smartIQDeltaFrequency)
 		cg.smartFrequencyTranslator = dsp.MakeFrequencyTranslator(int(smartIQDecimationNumber), smartIQDeltaFrequency, float32(deviceSampleRate), smartFtTaps)
 	}
-	// endregion
-	cg.settingsMutex.Unlock()
-	if state.CGS.Streaming && !cg.running {
-		cg.Start()
-	}
 
-	if !state.CGS.Streaming && cg.running {
-		cg.Stop()
-	}
+	cg.settingsMutex.Unlock()
 	cgLog.Info("Settings updated.")
 }
 
@@ -224,4 +247,12 @@ func (cg *ChannelGenerator) SetOnIQ(cb OnIQSamples) {
 
 func (cg *ChannelGenerator) SetOnSmartIQ(cb OnSmartIQSamples) {
 	cg.onSmartIQ = cb
+}
+
+func (cg *ChannelGenerator) SmartIQRunning() bool {
+	return cg.smartIQEnabled
+}
+
+func (cg *ChannelGenerator) IQRunning() bool {
+	return cg.iqEnabled
 }

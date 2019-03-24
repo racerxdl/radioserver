@@ -117,7 +117,7 @@ func (f *LimeSDRFrontend) MaximumDecimationStages() uint32 {
 	return f.maxDecimationStage
 }
 
-func (f *LimeSDRFrontend) GetDeviceType() uint32 {
+func (f *LimeSDRFrontend) GetDeviceType() protocol.DeviceType {
 	return protocol.DeviceLimeSDRUSB
 }
 

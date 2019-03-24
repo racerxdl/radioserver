@@ -101,7 +101,7 @@ func (f *AirspyFrontend) MaximumDecimationStages() uint32 {
 	return f.maxDecimationStage
 }
 
-func (f *AirspyFrontend) GetDeviceType() uint32 {
+func (f *AirspyFrontend) GetDeviceType() protocol.DeviceType {
 	return protocol.DeviceAirspyOne
 }
 

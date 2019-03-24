@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-func ParseCmdHelloBody(data []uint8) (Version, string) {
+func ParseCmdHelloBody(data []uint8) (VersionData, string) {
 	var protocolVersion uint64
 	var clientName string
 	buf := bytes.NewReader(data)

@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.radioserver";
+option java_outer_classname = "RadioServerProto";
+
+package protocol;
+
+enum StatusType {
+    Invalid  = 0;
+    OK = 1;
+    Error = 2;
+}
+
+enum ChannelType {
+    IQ = 0;
+    SmartIQ = 1;
+}
+
+enum DeviceType {
+    DeviceInvalid = 0;
+    DeviceTestSignal = 1;
+    DeviceAirspyOne = 2;
+    DeviceAirspyHf = 3;
+    DeviceRtlsdr = 4;
+    DeviceLimeSDRUSB = 5;
+    DeviceLimeSDRMini = 6;
+    DeviceSpyServer = 7;
+    DeviceHackRF = 8;
+}
+
+message LoginData {
+    string Token = 1;
+}
+
+message IQData {
+    uint64 Timestamp = 1;
+    StatusType status = 2;
+    string Error = 3;
+    ChannelType Type = 4;
+    repeated float Samples = 5;
+}
+
+message ChannelConfig {
+    LoginData LoginInfo = 1;
+    uint32 CenterFrequency = 2;
+    uint32 DecimationStage = 3;
+}
+
+message Empty {}
+
+message PingData {
+    uint64 Timestamp = 1;
+    string Token = 2;
+}
+
+message HelloData {
+    string Name = 1;
+    string Application = 2;
+    string Username = 3;
+    string Password = 4;
+}
+
+message HelloReturn {
+    StatusType Status = 1;
+    LoginData Login = 2;
+}
+
+message VersionData {
+    uint32 Major = 1;
+    uint32 Minor = 2;
+    uint32 Hash = 3;
+}
+
+message DeviceInfo {
+    DeviceType DeviceType = 1;
+    string DeviceSerial = 2;
+    string DeviceName = 3;
+    uint32 MaximumSampleRate = 4;
+    uint32 MaximumGain = 5;
+    uint32 MaximumDecimation = 6;
+    uint32 MinimumFrequency = 7;
+    uint32 MaximumFrequency = 8;
+    uint32 ADCResolution = 9;
+}
+
+message ServerInfoData {
+    bool ControlAllowed = 1;
+
+    uint32 ServerCenterFrequency = 2;
+    uint32 MinimumIQCenterFrequency = 3;
+    uint32 MaximumIQCenterFrequency = 4;
+    uint32 MinimumSmartFrequency = 5;
+    uint32 MaximumSmartFrequency = 6;
+    DeviceInfo deviceInfo = 7;
+    VersionData version = 8;
+}
+
+message MeData {
+    string Name = 1;
+    string Application = 2;
+    string Username = 3;
+    string Address = 4;
+    bool ControlAllowed = 5;
+}
+
+message ByeReturn {
+    string Message = 1;
+}
+
+service RadioServer {
+    rpc Me(LoginData) returns (MeData);
+    rpc Hello(HelloData) returns (HelloReturn);
+    rpc Bye(LoginData) returns (ByeReturn);
+    rpc ServerInfo(Empty) returns (ServerInfoData);
+    rpc SmartIQ(ChannelConfig) returns (stream IQData);
+    rpc IQ(ChannelConfig) returns (stream IQData);
+    rpc Ping(PingData) returns (PingData);
+}

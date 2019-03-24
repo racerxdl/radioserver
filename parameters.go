@@ -1,14 +1,17 @@
-package main
+package radioserver
 
 import (
-	"flag"
 	"github.com/racerxdl/radioserver/protocol"
+	"strconv"
 )
 
-var ServerVersion = protocol.Version{
+var ServerVersion = protocol.VersionData{
 	Major: 0,
 	Minor: 1,
 	Hash:  0,
 }
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+func init() {
+	hash, _ := strconv.ParseInt(commitHash, 16, 32)
+	ServerVersion.Hash = uint32(hash)
+}

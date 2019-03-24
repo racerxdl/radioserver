@@ -1,5 +1,7 @@
 package frontends
 
+import "github.com/racerxdl/radioserver/protocol"
+
 const (
 	SampleTypeFloatIQ = iota
 	SampleTypeS16IQ
@@ -9,7 +11,7 @@ const (
 const minimumSampleRate = 10e3
 
 type Frontend interface {
-	GetDeviceType() uint32
+	GetDeviceType() protocol.DeviceType
 	GetDeviceSerial() string
 	GetUintDeviceSerial() uint32
 	GetMaximumSampleRate() uint32
