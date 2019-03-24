@@ -26,13 +26,11 @@ func GetSamples(client protocol.RadioServerClient, stop chan bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	running := true
 
-	for running {
+	for {
 		data, err := iqClient.Recv()
 		if err != nil {
 			log.Error(err)
-			running = false
 			break
 		}
 		log.Info("Received %d samples!", len(data.Samples))

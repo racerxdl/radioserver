@@ -52,7 +52,7 @@ func (rs *RadioServer) Bye(ctx context.Context, ld *protocol.LoginData) (*protoc
 }
 
 func (rs *RadioServer) ServerInfo(context.Context, *protocol.Empty) (*protocol.ServerInfoData, error) {
-	return &*rs.serverInfo, nil // Make a copy
+	return rs.serverInfo, nil
 }
 
 func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.RadioServer_SmartIQServer) error {
