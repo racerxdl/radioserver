@@ -3,7 +3,7 @@ package frontends
 import (
 	"fmt"
 	"github.com/myriadrf/limedrv"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"math"
 )
@@ -11,7 +11,7 @@ import (
 const limeMaximumFrequency = 3.8e6
 const limeMinimumFrequency = 100e3
 
-var limeLog = SLog.Scope("LimeSDR Frontend")
+var limeLog = slog.Scope("LimeSDR Frontend")
 
 type LimeSDRFrontend struct {
 	device *limedrv.LMSDevice

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"net"
 	"time"
@@ -18,7 +18,7 @@ func min(a, b uint32) uint32 {
 }
 
 var softwareName = "RadioClient"
-var slog = SLog.Scope("RadioClient")
+var log = slog.Scope(softwareName)
 
 func SetSoftwareName(name string) {
 	softwareName = name
@@ -248,7 +248,7 @@ func (f *RadioClient) parseMessage(buffer []uint8) {
 				f.lastSequenceNumber = f.header.PacketNumber
 				f.droppedBuffers += gap
 				if gap > 0 {
-					slog.Debug("Lost %d packets from Radio Server!\n", gap)
+					log.Debug("Lost %d packets from Radio Server!\n", gap)
 				}
 				f.handleNewMessage()
 			}
@@ -434,7 +434,7 @@ func (f *RadioClient) threadLoop() {
 
 		if err != nil {
 			if f.routineRunning && !f.terminated {
-				slog.Debug("Error receiving data: %s", err)
+				log.Debug("Error receiving data: %s", err)
 			}
 			break
 		}
@@ -443,7 +443,7 @@ func (f *RadioClient) threadLoop() {
 			f.parseMessage(sl)
 		}
 	}
-	slog.Debug("Thread closing")
+	log.Debug("Thread closing")
 	f.routineRunning = false
 	f.cleanup()
 }
@@ -459,7 +459,7 @@ func (f *RadioClient) GetName() string {
 // Start starts the streaming process (if not already started)
 func (f *RadioClient) Start() {
 	if !f.Streaming {
-		slog.Debug("Starting streaming")
+		log.Debug("Starting streaming")
 		f.Streaming = true
 		f.downStreamBytes = 0
 		f.setStreamState()
@@ -469,7 +469,7 @@ func (f *RadioClient) Start() {
 // Stop stop the streaming process (if started)
 func (f *RadioClient) Stop() {
 	if f.Streaming {
-		slog.Debug("Stopping")
+		log.Debug("Stopping")
 		f.Streaming = false
 		f.downStreamBytes = 0
 		f.setStreamState()
@@ -483,7 +483,7 @@ func (f *RadioClient) Connect() {
 		return
 	}
 
-	slog.Debug("Trying to connect")
+	log.Debug("Trying to connect")
 	conn, err := net.Dial("tcp", f.fullhostname)
 	if err != nil {
 		panic(err)
@@ -504,7 +504,7 @@ func (f *RadioClient) Connect() {
 	errorMsg := ""
 
 	go f.threadLoop()
-	slog.Debug("Connected. Waiting for device info.")
+	log.Debug("Connected. Waiting for device info.")
 	for i := 0; i < 1000 && !hasError; i++ {
 		if f.gotDeviceInfo {
 			if f.deviceInfo.DeviceType == protocol.DeviceInvalid {
@@ -531,7 +531,7 @@ func (f *RadioClient) Connect() {
 
 // Disconnect disconnects from current connected RadioClient.
 func (f *RadioClient) Disconnect() {
-	slog.Debug("Disconnecting")
+	log.Debug("Disconnecting")
 	f.terminated = true
 	if f.IsConnected {
 		_ = f.client.Close()

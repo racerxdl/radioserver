@@ -1,11 +1,13 @@
 package StateModels
 
 import (
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
 	"sync"
 )
+
+var log = slog.Scope("ServerState")
 
 type ServerState struct {
 	DeviceInfo    protocol.DeviceInfo
@@ -40,7 +42,7 @@ func (s *ServerState) PushClient(state *ClientState) {
 
 	s.clients = append(s.clients, state)
 	if count == 0 {
-		SLog.Info("First client connected. Starting frontend...")
+		log.Info("First client connected. Starting frontend...")
 		s.Frontend.Start()
 	}
 }
@@ -54,7 +56,7 @@ func (s *ServerState) RemoveClient(state *ClientState) {
 	}
 
 	if len(s.clients) == 0 {
-		SLog.Info("Last client gone. Stopping frontend...")
+		log.Info("Last client gone. Stopping frontend...")
 		s.Frontend.Stop()
 	}
 }

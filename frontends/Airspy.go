@@ -2,7 +2,7 @@ package frontends
 
 import (
 	"fmt"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/spy2go/airspy"
 	"github.com/racerxdl/spy2go/spytypes"
@@ -12,7 +12,7 @@ import (
 const airspyMaximumFrequency = 1.768e6
 const airspyMinimumFrequency = 24e6
 
-var airspyLog = SLog.Scope("Airspy Frontend")
+var airspyLog = slog.Scope("Airspy Frontend")
 
 type AirspyFrontend struct {
 	device *airspy.Device

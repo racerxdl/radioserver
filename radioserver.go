@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/radioserver/tools"
@@ -16,12 +16,14 @@ import (
 	"syscall"
 )
 
+var log = slog.Scope("RadioServer")
+
 func main() {
 	flag.Parse()
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			SLog.Fatal(err)
+			log.Fatal(err)
 		}
 		_ = pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -38,12 +40,12 @@ func main() {
 	hash, _ := strconv.ParseInt(commitHash, 16, 32)
 	ServerVersion.Hash = uint32(hash)
 
-	SLog.Info("Protocol Version: %s", ServerVersion.String())
-	SLog.Info("Commit Hash: %s", commitHash)
-	SLog.Info("SIMD Mode: %s", dsp.GetSIMDMode())
+	log.Info("Protocol Version: %s", ServerVersion.String())
+	log.Info("Commit Hash: %s", commitHash)
+	log.Info("SIMD Mode: %s", dsp.GetSIMDMode())
 
-	var frontend = frontends.CreateAirspyFrontend(0)
-	//var frontend = frontends.CreateLimeSDRFrontend(0)
+	//var frontend = frontends.CreateAirspyFrontend(0)
+	var frontend = frontends.CreateLimeSDRFrontend(0)
 	//var frontend = frontends.CreateTestSignalFrontend()
 	frontend.Init()
 	frontend.SetCenterFrequency(106300000)
@@ -52,7 +54,7 @@ func main() {
 
 	var name = frontend.GetShortName()
 
-	SLog.Info("Frontend: %s", frontend.GetName())
+	log.Info("Frontend: %s", frontend.GetName())
 
 	serverState.Frontend = frontend
 	serverState.CanControl = 0
@@ -77,11 +79,11 @@ func main() {
 
 	go func() {
 		<-c
-		SLog.Info("Got SIGTERM! Closing it")
+		log.Info("Got SIGTERM! Closing it")
 		tcpServerStatus = false
 		stop <- true
 	}()
 
 	runServer(stop)
-	SLog.Info("Closing")
+	log.Info("Closing")
 }

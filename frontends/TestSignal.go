@@ -2,7 +2,7 @@ package frontends
 
 import (
 	"fmt"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/segdsp/dsp"
 	"math"
@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
+const randomPoolSize = 16384
+
 var testSignalSampleRate = 10e6
-var testSignalLog = SLog.Scope("TestSignal Frontend")
+var testSignalLog = slog.Scope("TestSignal Frontend")
 
 type TestSignalFrontend struct {
 	cb SamplesCallback
@@ -23,39 +25,63 @@ type TestSignalFrontend struct {
 	availableSampleRates []uint32
 	samplesBuffer        []complex64
 	frequency            uint32
+
+	interpolator   *dsp.Interpolator
+	frequencyShift *dsp.FrequencyTranslator
+	randomPool     []float32
+	currentPoolPos int
 }
 
 func CreateTestSignalFrontend() Frontend {
 	var f = &TestSignalFrontend{
-		deviceSerial: 0,
-		currentGain:  0,
-		running:      false,
-		frequency:    0,
+		deviceSerial:   0,
+		currentGain:    0,
+		running:        false,
+		frequency:      0,
+		randomPool:     make([]float32, randomPoolSize),
+		currentPoolPos: 0,
 	}
+
+	// region Cache Random Values
+	for i := 0; i < randomPoolSize; i++ {
+		var t = rand.NormFloat64()
+		if t > math.MaxFloat32 {
+			t = 2
+		} else if t < -math.MaxFloat32 {
+			t = -2
+		}
+		f.randomPool[i] = float32(t)
+	}
+	// endregion
 
 	// region Cache Samples
 	var samples = make([]complex64, 1024)
-	var interp = dsp.MakeInterpolator(16)
+	f.interpolator = dsp.MakeInterpolator(20)
 	var lowPass = dsp.MakeLowPassFixed(1, testSignalSampleRate, testSignalSampleRate/2-5e3, 63)
-	var frequencyShift = dsp.MakeFrequencyTranslator(1, -100e3, float32(testSignalSampleRate), lowPass)
+	f.frequencyShift = dsp.MakeFrequencyTranslator(1, -100e3, float32(testSignalSampleRate), lowPass)
 
 	for i := 0; i < len(samples); i++ {
-		samples[i] = complex((rand.Float32()-1)*0.5, 0)
+		samples[i] = complex(f.getRandom()*0.5, 0)
 	}
 
-	samples = interp.Work(samples)
+	samples = f.interpolator.Work(samples)
 
 	// Generate some background noise
 	for i := 0; i < len(samples); i++ {
-		samples[i] += complex((rand.Float32()-1)*1e-4, 0)
+		samples[i] += complex(f.getRandom()*1e-4, 0)
 	}
 
-	samples = frequencyShift.Work(samples)
+	samples = f.frequencyShift.Work(samples)
 	f.samplesBuffer = make([]complex64, 16384)
 	copy(f.samplesBuffer, samples)
 	// endregion
 
 	return f
+}
+
+func (f *TestSignalFrontend) getRandom() float32 {
+	f.currentPoolPos = rand.Intn(randomPoolSize)
+	return f.randomPool[f.currentPoolPos]
 }
 
 func (f *TestSignalFrontend) GetUintDeviceSerial() uint32 {
@@ -104,28 +130,30 @@ func (f *TestSignalFrontend) GetAvailableSampleRates() []uint32 {
 }
 
 func (f *TestSignalFrontend) loop() {
-	interval := time.Duration((1e9 * float64(len(f.samplesBuffer))) / testSignalSampleRate)
-	loopTicker := time.NewTicker(interval)
+	a := 1e9 / testSignalSampleRate
+	interval := time.Duration(a * float64(len(f.samplesBuffer)))
 	testSignalLog.Debug("Period: %v", interval)
 	for f.running {
-		for range loopTicker.C {
-			f.work()
-		}
+		f.work()
+		time.Sleep(interval)
 	}
 }
 
 func (f *TestSignalFrontend) work() {
 	if f.cb != nil {
-		var samples = make([]complex64, len(f.samplesBuffer))
-		copy(samples, f.samplesBuffer)
-		if f.currentGain > 0 {
-			var aGain = float32(math.Pow(10, float64(f.currentGain)/10))
-			for j := 0; j < len(samples); j++ {
-				var r = real(samples[j])
-				var i = imag(samples[j])
-				samples[j] = complex(r*aGain, i*aGain)
-			}
+		var samples = make([]complex64, 1024)
+		for i := 0; i < len(samples); i++ {
+			samples[i] = complex(f.getRandom()*0.5, 0)
 		}
+
+		samples = f.interpolator.Work(samples)
+
+		// Generate some background noise
+		for i := 0; i < len(samples); i++ {
+			samples[i] += complex(f.getRandom()*1e-4, 0)
+		}
+
+		samples = f.frequencyShift.Work(samples)
 		f.cb(samples)
 	}
 }

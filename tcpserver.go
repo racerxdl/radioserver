@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/StateModels"
 	"github.com/racerxdl/radioserver/protocol"
 	"math/rand"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var tcpSlog = SLog.Scope("TCP Server")
+var tcpSlog = slog.Scope("TCP Server")
 var tcpServerStatus = false
 var listenPort = protocol.DefaultPort
 var serverState = StateModels.CreateServerState()
@@ -43,7 +43,7 @@ func handleConnection(c net.Conn) {
 	var clientState = StateModels.CreateClientState(serverState.Frontend.GetCenterFrequency())
 
 	clientState.Addr = c.RemoteAddr()
-	clientState.LogInstance = SLog.Scope(fmt.Sprintf("Client %s", c.RemoteAddr()))
+	clientState.LogInstance = slog.Scope(fmt.Sprintf("Client %s", c.RemoteAddr()))
 	clientState.Conn = c
 	clientState.Running = true
 	clientState.ServerState = serverState

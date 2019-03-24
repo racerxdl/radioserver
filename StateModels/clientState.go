@@ -2,7 +2,7 @@ package StateModels
 
 import (
 	"github.com/google/uuid"
-	"github.com/racerxdl/radioserver/SLog"
+	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/radioserver/tools"
 	"net"
@@ -31,7 +31,7 @@ type ClientState struct {
 	UUID           string
 	Buffer         []uint8
 	HeaderBuffer   []uint8
-	LogInstance    *SLog.Instance
+	LogInstance    *slog.Instance
 	Addr           net.Addr
 	Conn           net.Conn
 	Running        bool
@@ -72,7 +72,7 @@ func CreateClientState(centerFrequency uint32) *ClientState {
 		SentPackets:    0,
 		CmdReceived:    0,
 		ParserPosition: 0,
-		LogInstance:    SLog.Scope("ClientState"),
+		LogInstance:    slog.Scope("ClientState"),
 		HeaderBuffer:   make([]uint8, protocol.MessageHeaderSize),
 		CGS: ChannelGeneratorState{
 			Streaming:            false,
@@ -157,23 +157,16 @@ func (state *ClientState) onSmart(samples []complex64) {
 }
 
 func (state *ClientState) onIQ(samples []complex64) {
-	samplesToSend := tools.Complex64ToInt16(samples)
-	msgType := protocol.TypeIQ
-
-	if samplesToSend != nil {
-		state.SendIQ(samplesToSend, uint32(msgType))
-	}
-}
-
-func (state *ClientState) SendIQ(samples interface{}, messageType uint32) {
 	state.Lock()
 	defer state.Unlock()
 
-	var bodyData = tools.ArrayToBytes(samples)
+	samplesToSend := tools.Complex64ToInt16(samples)
+
+	var bodyData = tools.ArrayToBytes(samplesToSend)
 
 	var header = protocol.MessageHeader{
 		ProtocolVersion: state.ServerVersion.ToUint64(),
-		MessageType:     messageType,
+		MessageType:     protocol.TypeIQ,
 		PacketNumber:    uint32(state.SentPackets & 0xFFFFFFFF),
 		BodySize:        uint32(len(bodyData)),
 	}
