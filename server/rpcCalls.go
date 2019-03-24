@@ -72,7 +72,7 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 	defer s.CG.StopSmartIQ()
 
 	for {
-		if s.SmartIQFifo.Len() > 0 {
+		for s.SmartIQFifo.UnsafeLen() > 0 {
 			samples := s.SmartIQFifo.Next().([]complex64)
 			if err := server.Send(protocol.MakeIQData(protocol.ChannelType_IQ, samples)); err != nil {
 				log.Error("Error sending samples to %s: %s", s.Name, err)
@@ -84,8 +84,9 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 				log.Error("Session Expired")
 				return fmt.Errorf("session expired")
 			}
+			runtime.Gosched()
 		}
-		runtime.Gosched()
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -106,8 +107,8 @@ func (rs *RadioServer) IQ(cc *protocol.ChannelConfig, server protocol.RadioServe
 	defer s.CG.StopIQ()
 
 	for {
-		if s.IQFifo.Len() > 0 {
-			samples := s.SmartIQFifo.Next().([]complex64)
+		for s.IQFifo.UnsafeLen() > 0 {
+			samples := s.IQFifo.Next().([]complex64)
 			if err := server.Send(protocol.MakeIQData(protocol.ChannelType_IQ, samples)); err != nil {
 				log.Error("Error sending samples to %s: %s", s.Name, err)
 				return err
@@ -118,8 +119,9 @@ func (rs *RadioServer) IQ(cc *protocol.ChannelConfig, server protocol.RadioServe
 				log.Error("Session Expired")
 				return fmt.Errorf("session expired")
 			}
+			runtime.Gosched()
 		}
-		runtime.Gosched()
+		time.Sleep(time.Millisecond)
 	}
 }
 

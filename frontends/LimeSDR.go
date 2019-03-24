@@ -51,7 +51,7 @@ func CreateLimeSDRFrontend(deviceIdx int) Frontend {
 	}
 
 	f.deviceSerial = 0
-	f.maxSampleRate = 30000000 //60000000
+	f.maxSampleRate = 5000000 //60000000
 
 	var availableSampleRates = make([]uint32, 1)
 	availableSampleRates[0] = f.maxSampleRate
@@ -88,7 +88,7 @@ func CreateLimeSDRFrontend(deviceIdx int) Frontend {
 		EnableDigitalLPF().
 		SetAntennaByName("LNAW")
 
-	f.device.SetGainNormalized(f.selectedChannelIndex, true, 0.1)
+	f.device.SetGainNormalized(f.selectedChannelIndex, true, 0.2)
 
 	return f
 }

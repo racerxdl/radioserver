@@ -7,6 +7,7 @@ import (
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/radioserver/tools"
 	"github.com/racerxdl/segdsp/dsp"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -79,6 +80,7 @@ func (cg *ChannelGenerator) routine() {
 		if !cg.running {
 			break
 		}
+		runtime.Gosched()
 	}
 	cgLog.Debug("Cleaning fifo")
 	for i := 0; i < cg.inputFifo.UnsafeLen(); i++ {
@@ -89,8 +91,6 @@ func (cg *ChannelGenerator) routine() {
 
 func (cg *ChannelGenerator) doWork() {
 	cg.settingsMutex.Lock()
-	defer cg.settingsMutex.Unlock()
-
 	for cg.inputFifo.UnsafeLen() > 0 {
 		var samples = cg.inputFifo.Next().([]complex64)
 		if cg.iqEnabled {
@@ -101,6 +101,7 @@ func (cg *ChannelGenerator) doWork() {
 			cg.processSmart(samples)
 		}
 	}
+	cg.settingsMutex.Unlock()
 }
 
 func (cg *ChannelGenerator) processIQ(samples []complex64) {
@@ -143,12 +144,12 @@ func (cg *ChannelGenerator) Start() {
 		cgLog.Info("Starting Channel Generator")
 		cg.running = true
 		go cg.routine()
-		go func() {
-			for cg.running {
-				<-time.After(1 * time.Second)
-				cgLog.Debug("Fifo Usage: %d", cg.inputFifo.UnsafeLen())
-			}
-		}()
+		//go func() {
+		//	for cg.running {
+		//		<-time.After(1 * time.Second)
+		//		cgLog.Debug("Fifo Usage: %d", cg.inputFifo.UnsafeLen())
+		//	}
+		//}()
 	}
 }
 
@@ -162,16 +163,16 @@ func (cg *ChannelGenerator) Stop() {
 
 func (cg *ChannelGenerator) StartIQ() {
 	cg.settingsMutex.Lock()
-	defer cg.settingsMutex.Unlock()
 	cgLog.Info("Enabling IQ")
 	cg.iqEnabled = true
+	cg.settingsMutex.Unlock()
 }
 
 func (cg *ChannelGenerator) StopIQ() {
 	cg.settingsMutex.Lock()
-	defer cg.settingsMutex.Unlock()
 	cgLog.Info("Disabling IQ")
 	cg.iqEnabled = false
+	cg.settingsMutex.Unlock()
 
 	if !cg.smartIQEnabled && cg.running {
 		go cg.Stop()
@@ -180,21 +181,20 @@ func (cg *ChannelGenerator) StopIQ() {
 
 func (cg *ChannelGenerator) StartSmartIQ() {
 	cg.settingsMutex.Lock()
-	defer cg.settingsMutex.Unlock()
 	cgLog.Info("Enabling SmartIQ")
 	cg.smartIQEnabled = true
-
+	cg.settingsMutex.Unlock()
 }
 
 func (cg *ChannelGenerator) StopSmartIQ() {
 	cg.settingsMutex.Lock()
-	defer cg.settingsMutex.Unlock()
 	cgLog.Info("Disabling SmartIQ")
 	cg.smartIQEnabled = false
 
 	if !cg.iqEnabled && cg.running {
 		go cg.Stop()
 	}
+	cg.settingsMutex.Unlock()
 }
 
 func (cg *ChannelGenerator) UpdateSettings(channelType protocol.ChannelType, frontend frontends.Frontend, state *protocol.ChannelConfig) {
