@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/racerxdl/radioserver/protocol"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -71,14 +72,28 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 	s.CG.StartSmartIQ()
 	defer s.CG.StopSmartIQ()
 
+	lastNumSamples := 0
+	pool := sync.Pool{
+		New: func() interface{} {
+			return make([]float32, lastNumSamples)
+		},
+	}
+
 	for {
-		for s.SmartIQFifo.UnsafeLen() > 0 {
+		for s.SmartIQFifo.Len() > 0 {
 			samples := s.SmartIQFifo.Next().([]complex64)
-			if err := server.Send(protocol.MakeIQData(protocol.ChannelType_IQ, samples)); err != nil {
+			pb := protocol.MakeIQDataWithPool(protocol.ChannelType_IQ, samples, pool)
+			if err := server.Send(pb); err != nil {
 				log.Error("Error sending samples to %s: %s", s.Name, err)
 				return err
 			}
 			s.KeepAlive()
+
+			if len(pb.Samples) != lastNumSamples {
+				lastNumSamples = len(pb.Samples)
+			}
+
+			pool.Put(pb.Samples) // If the size is not correct, MakeIQDataWithPool will discard or trim it
 
 			if s.IsFullStopped() {
 				log.Error("Session Expired")
@@ -106,14 +121,28 @@ func (rs *RadioServer) IQ(cc *protocol.ChannelConfig, server protocol.RadioServe
 	s.CG.StartIQ()
 	defer s.CG.StopIQ()
 
+	lastNumSamples := 0
+	pool := sync.Pool{
+		New: func() interface{} {
+			return make([]float32, lastNumSamples)
+		},
+	}
+
 	for {
-		for s.IQFifo.UnsafeLen() > 0 {
+		for s.IQFifo.Len() > 0 {
 			samples := s.IQFifo.Next().([]complex64)
-			if err := server.Send(protocol.MakeIQData(protocol.ChannelType_IQ, samples)); err != nil {
+			pb := protocol.MakeIQDataWithPool(protocol.ChannelType_IQ, samples, pool)
+			if err := server.Send(pb); err != nil {
 				log.Error("Error sending samples to %s: %s", s.Name, err)
 				return err
 			}
 			s.KeepAlive()
+
+			if len(pb.Samples) != lastNumSamples {
+				lastNumSamples = len(pb.Samples)
+			}
+
+			pool.Put(pb.Samples) // If the size is not correct, MakeIQDataWithPool will discard or trim it
 
 			if s.IsFullStopped() {
 				log.Error("Session Expired")

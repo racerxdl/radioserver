@@ -83,15 +83,15 @@ func (cg *ChannelGenerator) routine() {
 		runtime.Gosched()
 	}
 	cgLog.Debug("Cleaning fifo")
-	for i := 0; i < cg.inputFifo.UnsafeLen(); i++ {
-		cg.inputFifo.UnsafeNext()
+	for i := 0; i < cg.inputFifo.Len(); i++ {
+		cg.inputFifo.Next()
 	}
 	cgLog.Debug("Done")
 }
 
 func (cg *ChannelGenerator) doWork() {
 	cg.settingsMutex.Lock()
-	for cg.inputFifo.UnsafeLen() > 0 {
+	for cg.inputFifo.Len() > 0 {
 		var samples = cg.inputFifo.Next().([]complex64)
 		if cg.iqEnabled {
 			cg.processIQ(samples)
@@ -229,7 +229,7 @@ func (cg *ChannelGenerator) PushSamples(samples []complex64) {
 		return
 	}
 
-	var fifoLength = cg.inputFifo.UnsafeLen()
+	var fifoLength = cg.inputFifo.Len()
 
 	if maxFifoSize <= fifoLength {
 		cgLog.Debug("Fifo Overflowing!")
