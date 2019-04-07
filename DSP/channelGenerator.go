@@ -7,6 +7,9 @@ import (
 	"github.com/racerxdl/radioserver/protocol"
 	"github.com/racerxdl/radioserver/tools"
 	"github.com/racerxdl/segdsp/dsp"
+	"github.com/racerxdl/segdsp/dsp/fft"
+	tools2 "github.com/racerxdl/segdsp/tools"
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -20,11 +23,13 @@ const SmartLength = 4096
 
 type OnSmartIQSamples func(samples []complex64)
 type OnIQSamples func(samples []complex64)
+type OnFCSamples func(samples []float32)
 
 type ChannelGenerator struct {
 	sync.Mutex
 	iqFrequencyTranslator    *dsp.FrequencyTranslator
 	smartFrequencyTranslator *dsp.FrequencyTranslator
+	fcFrequencyTranslator    *dsp.FrequencyTranslator
 
 	inputFifo     *fifo.Queue
 	running       bool
@@ -32,27 +37,39 @@ type ChannelGenerator struct {
 
 	smartIQEnabled bool
 	iqEnabled      bool
+	fcEnabled      bool
 
-	onIQSamples    OnIQSamples
-	onSmartIQ      OnSmartIQSamples
-	updateChannel  chan bool
-	lastSmart      time.Time
-	smartIQPeriod  time.Duration
-	blackmanWindow []float32
+	onIQSamples          OnIQSamples
+	onSmartIQ            OnSmartIQSamples
+	onFC                 OnFCSamples
+	updateChannel        chan bool
+	lastSmart            time.Time
+	lastFC               time.Time
+	smartIQPeriod        time.Duration
+	blackmanWindow       []float32
+	fcWindow             []float32
+	lastFrequencySamples []float32
 
 	syncSampleInput *sync.Cond
+
+	smartIQSampleRate float32
+	fcSampleRate      float32
+	fcLength          uint32
 }
 
 func CreateChannelGenerator() *ChannelGenerator {
 	var smartPeriod = 1e9 / float32(SmartFrameRate)
 
 	var cg = &ChannelGenerator{
-		Mutex:         sync.Mutex{},
-		inputFifo:     fifo.NewQueue(),
-		settingsMutex: sync.Mutex{},
-		updateChannel: make(chan bool),
-		lastSmart:     time.Now(),
-		smartIQPeriod: time.Duration(smartPeriod),
+		Mutex:                sync.Mutex{},
+		inputFifo:            fifo.NewQueue(),
+		settingsMutex:        sync.Mutex{},
+		updateChannel:        make(chan bool),
+		lastSmart:            time.Now(),
+		lastFC:               time.Now(),
+		lastFrequencySamples: make([]float32, SmartLength),
+		smartIQPeriod:        time.Duration(smartPeriod),
+		fcLength:             SmartLength,
 	}
 
 	cg.syncSampleInput = sync.NewCond(cg)
@@ -62,6 +79,8 @@ func CreateChannelGenerator() *ChannelGenerator {
 	for i, v := range w {
 		cg.blackmanWindow[i] = float32(v)
 	}
+
+	cg.fcWindow = cg.blackmanWindow // Default size SmartIQ
 
 	return cg
 }
@@ -100,6 +119,10 @@ func (cg *ChannelGenerator) doWork() {
 		if cg.smartIQEnabled {
 			cg.processSmart(samples)
 		}
+
+		if cg.fcEnabled {
+			cg.processFrequency(samples)
+		}
 	}
 	cg.settingsMutex.Unlock()
 }
@@ -110,6 +133,40 @@ func (cg *ChannelGenerator) processIQ(samples []complex64) {
 			samples = cg.iqFrequencyTranslator.Work(samples)
 		}
 		cg.onIQSamples(samples)
+	}
+}
+
+func (cg *ChannelGenerator) processFrequency(samples []complex64) {
+	if time.Since(cg.lastFC) > cg.smartIQPeriod && cg.onFC != nil {
+		// Process IQ Input
+		if cg.fcFrequencyTranslator.GetDecimation() != 1 || cg.fcFrequencyTranslator.GetFrequency() != 0 {
+			samples = cg.fcFrequencyTranslator.Work(samples)
+		}
+
+		samples = samples[:cg.fcLength]
+
+		// Apply window to samples
+		for j := 0; j < len(samples); j++ {
+			var s = samples[j]
+			var r = real(s) * float32(cg.fcWindow[j])
+			var i = imag(s) * float32(cg.fcWindow[j])
+			samples[j] = complex(r, i)
+		}
+
+		fftCData := fft.FFT(samples)
+
+		var fftSamples = make([]float32, len(fftCData))
+		var l = len(fftSamples)
+		for i, v := range fftCData {
+			var oI = (i + l/2) % l
+			var m = float64(tools2.ComplexAbsSquared(v) * (1.0 / cg.fcSampleRate))
+			fftSamples[oI] = (float32(10*math.Log10(m)) + cg.lastFrequencySamples[i]) / 2
+		}
+
+		copy(cg.lastFrequencySamples, fftSamples)
+
+		cg.onFC(fftSamples)
+		cg.lastFC = time.Now()
 	}
 }
 
@@ -179,6 +236,24 @@ func (cg *ChannelGenerator) StopIQ() {
 	}
 }
 
+func (cg *ChannelGenerator) StartFC() {
+	cg.settingsMutex.Lock()
+	cgLog.Info("Enabling Frequency Channel")
+	cg.fcEnabled = true
+	cg.settingsMutex.Unlock()
+}
+
+func (cg *ChannelGenerator) StopFC() {
+	cg.settingsMutex.Lock()
+	cgLog.Info("Disabling Frequency Channel")
+	cg.fcEnabled = false
+	cg.settingsMutex.Unlock()
+
+	if !cg.smartIQEnabled && cg.running {
+		go cg.Stop()
+	}
+}
+
 func (cg *ChannelGenerator) StartSmartIQ() {
 	cg.settingsMutex.Lock()
 	cgLog.Info("Enabling SmartIQ")
@@ -218,6 +293,35 @@ func (cg *ChannelGenerator) UpdateSettings(channelType protocol.ChannelType, fro
 		var smartIQDeltaFrequency = float32(state.CenterFrequency) - float32(deviceFrequency)
 		cgLog.Debug("SmartIQ Delta Frequency: %.0f", smartIQDeltaFrequency)
 		cg.smartFrequencyTranslator = dsp.MakeFrequencyTranslator(int(smartIQDecimationNumber), smartIQDeltaFrequency, float32(deviceSampleRate), smartFtTaps)
+		cg.smartIQSampleRate = float32(deviceSampleRate / smartIQDecimationNumber)
+	}
+
+	cg.settingsMutex.Unlock()
+	cgLog.Info("Settings updated.")
+}
+
+func (cg *ChannelGenerator) UpdateFrequencyChannel(frontend frontends.Frontend, state *protocol.FrequencyChannelConfig) {
+	cg.settingsMutex.Lock()
+	cgLog.Info("Updating Frequency Channel Settings")
+
+	var deviceFrequency = frontend.GetCenterFrequency()
+	var deviceSampleRate = frontend.GetSampleRate()
+
+	var fcDecimationNumber = tools.StageToNumber(state.DecimationStage)
+	var fcFtTaps = tools.GenerateTranslatorTaps(fcDecimationNumber, deviceSampleRate)
+	var fcDeltaFrequency = float32(state.CenterFrequency) - float32(deviceFrequency)
+	cgLog.Debug("FC Delta Frequency: %.0f", fcDeltaFrequency)
+	cg.fcFrequencyTranslator = dsp.MakeFrequencyTranslator(int(fcDecimationNumber), fcDeltaFrequency, float32(deviceSampleRate), fcFtTaps)
+	cg.fcSampleRate = float32(deviceSampleRate / fcDecimationNumber)
+
+	if cg.fcLength != state.Length {
+		cg.fcLength = state.Length
+		cg.fcWindow = make([]float32, cg.fcLength)
+		w := dsp.BlackmanHarris(int(cg.fcLength), 92)
+		for i, v := range w {
+			cg.fcWindow[i] = float32(v)
+		}
+		cg.lastFrequencySamples = make([]float32, cg.fcLength)
 	}
 
 	cg.settingsMutex.Unlock()
@@ -249,10 +353,22 @@ func (cg *ChannelGenerator) SetOnSmartIQ(cb OnSmartIQSamples) {
 	cg.onSmartIQ = cb
 }
 
+func (cg *ChannelGenerator) SetOnFC(cb OnFCSamples) {
+	cg.onFC = cb
+}
+
 func (cg *ChannelGenerator) SmartIQRunning() bool {
 	return cg.smartIQEnabled
 }
 
 func (cg *ChannelGenerator) IQRunning() bool {
 	return cg.iqEnabled
+}
+
+func (cg *ChannelGenerator) GetSmartIQSampleRate() float32 {
+	cg.settingsMutex.Lock()
+	sr := cg.smartIQSampleRate
+	cg.settingsMutex.Unlock()
+
+	return sr
 }

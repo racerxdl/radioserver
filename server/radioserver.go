@@ -2,12 +2,15 @@ package server
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver"
 	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
+	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -63,13 +66,19 @@ func MakeRadioServer(frontend frontends.Frontend) *RadioServer {
 	return rs
 }
 
-func (rs *RadioServer) Listen(address string) error {
+func (rs *RadioServer) Listen(gRPCAddress, httpAddress string) error {
 	if rs.grpcServer != nil {
 		return fmt.Errorf("server already runing")
 	}
 
-	lis, err := net.Listen("tcp", address)
+	lis, err := net.Listen("tcp", gRPCAddress)
 	if err != nil {
+		return err
+	}
+
+	lisHttp, err := net.Listen("tcp", httpAddress)
+	if err != nil {
+		lis.Close()
 		return err
 	}
 
@@ -79,6 +88,7 @@ func (rs *RadioServer) Listen(address string) error {
 	rs.running = true
 	go rs.routines()
 	go rs.serve(lis)
+	go rs.serveHttp(lisHttp)
 	return nil
 }
 
@@ -87,7 +97,38 @@ func (rs *RadioServer) serve(conn net.Listener) {
 	if err != nil {
 		log.Error("RPC Error: %s", err)
 	}
+	conn.Close()
 	rs.Stop()
+}
+
+func (rs *RadioServer) serveHttp(conn net.Listener) {
+	defer conn.Close()
+	defer rs.Stop()
+
+	r := mux.NewRouter()
+	p := MakeProxyServer(rs.grpcServer)
+
+	p.RegisterURLs(r)
+
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("huehuebr"))
+	})
+
+	server := &http.Server{}
+	server.Handler = r
+	err := http2.ConfigureServer(server, &http2.Server{})
+
+	if err != nil {
+		log.Error("Error starting HTTP/2 server: %s", err)
+		return
+	}
+
+	server.Serve(conn)
+	err = rs.grpcServer.Serve(conn)
+	if err != nil {
+		log.Error("RPC Error: %s", err)
+		return
+	}
 }
 
 func (rs *RadioServer) Stop() {

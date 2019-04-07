@@ -55,3 +55,24 @@ func MakeIQDataWithPool(channelType ChannelType, samples []complex64, pool sync.
 		Samples:   v,
 	}
 }
+
+func MakeFloatIQDataWithPool(channelType ChannelType, samples []float32, pool sync.Pool) *IQData {
+	v := pool.New().([]float32)
+
+	if len(v) < len(samples) {
+		v = make([]float32, len(samples))
+	} else if len(v) > len(samples) {
+		// We dont need to discard, just trim
+		v = v[:len(samples)]
+	}
+
+	copy(v, samples)
+
+	return &IQData{
+		Timestamp: uint64(time.Now().UnixNano()),
+		Status:    StatusType_OK,
+		Error:     "",
+		Type:      channelType,
+		Samples:   v,
+	}
+}

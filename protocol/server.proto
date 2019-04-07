@@ -15,6 +15,7 @@ enum StatusType {
 enum ChannelType {
     IQ = 0;
     SmartIQ = 1;
+    Frequency = 2;
 }
 
 enum DeviceType {
@@ -45,6 +46,13 @@ message ChannelConfig {
     LoginData LoginInfo = 1;
     uint32 CenterFrequency = 2;
     uint32 DecimationStage = 3;
+}
+
+message FrequencyChannelConfig {
+    LoginData LoginInfo = 1;
+    uint32 CenterFrequency = 2;
+    uint32 DecimationStage = 3;
+    uint32 Length = 4;
 }
 
 message Empty {}
@@ -114,6 +122,7 @@ service RadioServer {
     rpc Bye(LoginData) returns (ByeReturn);
     rpc ServerInfo(Empty) returns (ServerInfoData);
     rpc SmartIQ(ChannelConfig) returns (stream IQData);
+    rpc FrequencyData(FrequencyChannelConfig) returns (stream IQData);
     rpc IQ(ChannelConfig) returns (stream IQData);
     rpc Ping(PingData) returns (PingData);
 }

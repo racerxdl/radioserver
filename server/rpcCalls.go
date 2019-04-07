@@ -56,6 +56,54 @@ func (rs *RadioServer) ServerInfo(context.Context, *protocol.Empty) (*protocol.S
 	return rs.serverInfo, nil
 }
 
+func (rs *RadioServer) FrequencyData(cc *protocol.FrequencyChannelConfig, server protocol.RadioServer_FrequencyDataServer) error {
+	rs.sessionLock.Lock()
+	s := rs.sessions[cc.LoginInfo.Token]
+	if s == nil {
+		return fmt.Errorf("not logged in")
+	}
+	rs.sessionLock.Unlock()
+
+	if s.CG.SmartIQRunning() {
+		return fmt.Errorf("already running")
+	}
+	s.CG.UpdateFrequencyChannel(rs.frontend, cc)
+	s.CG.StartFC()
+	defer s.CG.StopFC()
+
+	lastNumSamples := 0
+	pool := sync.Pool{
+		New: func() interface{} {
+			return make([]float32, lastNumSamples)
+		},
+	}
+
+	for {
+		for s.FrequencyFifo.Len() > 0 {
+			samples := s.FrequencyFifo.Next().([]float32)
+			pb := protocol.MakeFloatIQDataWithPool(protocol.ChannelType_Frequency, samples, pool)
+			if err := server.Send(pb); err != nil {
+				log.Error("Error sending samples to %s: %s", s.Name, err)
+				return err
+			}
+			s.KeepAlive()
+
+			if len(pb.Samples) != lastNumSamples {
+				lastNumSamples = len(pb.Samples)
+			}
+
+			pool.Put(pb.Samples) // If the size is not correct, MakeIQDataWithPool will discard or trim it
+
+			if s.IsFullStopped() {
+				log.Error("Session Expired")
+				return fmt.Errorf("session expired")
+			}
+			runtime.Gosched()
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.RadioServer_SmartIQServer) error {
 	rs.sessionLock.Lock()
 	s := rs.sessions[cc.LoginInfo.Token]
@@ -82,7 +130,7 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 	for {
 		for s.SmartIQFifo.Len() > 0 {
 			samples := s.SmartIQFifo.Next().([]complex64)
-			pb := protocol.MakeIQDataWithPool(protocol.ChannelType_IQ, samples, pool)
+			pb := protocol.MakeIQDataWithPool(protocol.ChannelType_SmartIQ, samples, pool)
 			if err := server.Send(pb); err != nil {
 				log.Error("Error sending samples to %s: %s", s.Name, err)
 				return err

@@ -3,7 +3,7 @@
 HASH=`git rev-parse HEAD`
 
 cat << EOF > version_linux.go
-package main
+package radioserver
 
 //go:generate bash gen.sh
 const commitHash = "$HASH"
