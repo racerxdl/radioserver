@@ -3,14 +3,18 @@ package server
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver"
 	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
+	"github.com/racerxdl/radioserver/webapp"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
+	"mime"
 	"net"
 	"net/http"
+	"path"
 	"sync"
 	"time"
 )
@@ -110,9 +114,49 @@ func (rs *RadioServer) serveHttp(conn net.Listener) {
 
 	p.RegisterURLs(r)
 
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("huehuebr"))
-	})
+	r.Handle("/metrics", promhttp.Handler())
+
+	files := webapp.AssetNames()
+
+	for _, f := range files {
+		urlPath := path.Join("/", f)
+		log.Debug("Registering file %s", urlPath)
+		r.HandleFunc(urlPath, func(w http.ResponseWriter, r *http.Request) {
+
+			data, err := webapp.Asset(urlPath[1:])
+			if err != nil {
+				w.WriteHeader(500)
+				w.Write([]byte("Internal Server Error"))
+				return
+			}
+
+			ext := path.Ext(urlPath)
+			mimeType := mime.TypeByExtension(ext)
+
+			if mimeType == "" {
+				mimeType = mime.TypeByExtension(".bin")
+			}
+
+			w.Header().Add("content-type", mimeType)
+			w.WriteHeader(200)
+			w.Write(data)
+		})
+	}
+
+	indexHandler := func(w http.ResponseWriter, r *http.Request) {
+		data, err := webapp.Asset("index.html")
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("Internal Server Error"))
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+
+	r.HandleFunc("/", indexHandler)
+	r.NotFoundHandler = http.HandlerFunc(indexHandler)
 
 	server := &http.Server{}
 	server.Handler = r
@@ -123,8 +167,7 @@ func (rs *RadioServer) serveHttp(conn net.Listener) {
 		return
 	}
 
-	server.Serve(conn)
-	err = rs.grpcServer.Serve(conn)
+	err = server.Serve(conn)
 	if err != nil {
 		log.Error("RPC Error: %s", err)
 		return

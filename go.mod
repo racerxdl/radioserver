@@ -9,6 +9,7 @@ require (
 	github.com/improbable-eng/grpc-web v0.9.1
 	github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223 // indirect
 	github.com/myriadrf/limedrv v0.0.0-20190407012642-78d9bfdc1eea
+	github.com/prometheus/client_golang v0.9.2
 	github.com/quan-to/slog v0.0.0-20190317205605-56a2b4159924
 	github.com/racerxdl/go.fifo v0.0.0-20180604061744-c6aa83afe374
 	github.com/racerxdl/segdsp v0.0.0-20190329062126-4f400f793b40

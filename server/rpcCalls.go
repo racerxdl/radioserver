@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/racerxdl/radioserver/metrics"
 	"github.com/racerxdl/radioserver/protocol"
 	"runtime"
 	"sync"
@@ -27,6 +28,8 @@ func (rs *RadioServer) Hello(ctx context.Context, hdata *protocol.HelloData) (*p
 	rs.sessions[s.ID] = s
 	log.Info("Welcome %s!", s.Name)
 
+	metrics.Sessions.Inc()
+
 	return &protocol.HelloReturn{
 		Status: protocol.OK,
 		Login:  &s.LoginData,
@@ -45,6 +48,8 @@ func (rs *RadioServer) Bye(ctx context.Context, ld *protocol.LoginData) (*protoc
 	delete(rs.sessions, ld.Token)
 
 	s.FullStop()
+
+	metrics.Sessions.Dec()
 
 	log.Info("Bye %s!", s.Name)
 	return &protocol.ByeReturn{

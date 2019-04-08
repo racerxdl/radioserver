@@ -1,6 +1,9 @@
 package server
 
-import "time"
+import (
+	"github.com/racerxdl/radioserver/metrics"
+	"time"
+)
 
 const (
 	routinesInterval     = time.Second * 2
@@ -30,6 +33,7 @@ func (rs *RadioServer) checkSessions() {
 		if session.Expired() {
 			log.Info("Session %s expired.", session.Name)
 			delete(rs.sessions, token)
+			metrics.Sessions.Dec()
 			go session.FullStop()
 		}
 	}
