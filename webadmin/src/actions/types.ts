@@ -4,6 +4,8 @@ export type ActionType = {
 
 export type AddFFTState = {
   samples: number[]
+  centerFrequency: number,
+  sampleRate: number,
 }
 
 export type AddFFTAction = ActionType & AddFFTState

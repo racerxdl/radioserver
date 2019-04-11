@@ -4,10 +4,12 @@ const DefinedActions = {
   AddFFT: 'ADD_FFT',
 };
 
-function AddFFT(samples: number[]): AddFFTAction {
+function AddFFT(centerFrequency: number, sampleRate: number, samples: number[]): AddFFTAction {
   return {
     type: DefinedActions.AddFFT,
     samples,
+    centerFrequency,
+    sampleRate,
   }
 }
 

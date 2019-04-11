@@ -88,7 +88,7 @@ func CreateLimeSDRFrontend(deviceIdx int) Frontend {
 		EnableDigitalLPF().
 		SetAntennaByName("LNAW")
 
-	f.device.SetGainNormalized(f.selectedChannelIndex, true, 0.5)
+	f.device.SetGainNormalized(f.selectedChannelIndex, true, 0.1)
 
 	return f
 }

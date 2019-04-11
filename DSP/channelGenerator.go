@@ -18,8 +18,9 @@ import (
 var cgLog = slog.Scope("ChannelGenerator")
 
 const maxFifoSize = 4096
-const SmartFrameRate = 20
+const SmartFrameRate = 25
 const SmartLength = 4096
+const FFTAveraging = 4.5
 
 type OnSmartIQSamples func(samples []complex64)
 type OnIQSamples func(samples []complex64)
@@ -137,7 +138,7 @@ func (cg *ChannelGenerator) processIQ(samples []complex64) {
 }
 
 func (cg *ChannelGenerator) processFrequency(samples []complex64) {
-	if time.Since(cg.lastFC) > cg.smartIQPeriod && cg.onFC != nil {
+	if time.Since(cg.lastFC) > cg.smartIQPeriod && cg.onFC != nil && len(samples) >= int(cg.fcLength) {
 		// Process IQ Input
 		if cg.fcFrequencyTranslator.GetDecimation() != 1 || cg.fcFrequencyTranslator.GetFrequency() != 0 {
 			samples = cg.fcFrequencyTranslator.Work(samples)
@@ -157,10 +158,23 @@ func (cg *ChannelGenerator) processFrequency(samples []complex64) {
 
 		var fftSamples = make([]float32, len(fftCData))
 		var l = len(fftSamples)
+		var lastV = float32(0)
 		for i, v := range fftCData {
 			var oI = (i + l/2) % l
 			var m = float64(tools2.ComplexAbsSquared(v) * (1.0 / cg.fcSampleRate))
-			fftSamples[oI] = (float32(10*math.Log10(m)) + cg.lastFrequencySamples[i]) / 2
+
+			m = 10 * math.Log10(m)
+
+			fftSamples[oI] = (cg.lastFrequencySamples[i]*(FFTAveraging-1) + float32(m)) / FFTAveraging
+			if fftSamples[i] != fftSamples[i] { // IsNaN
+				fftSamples[i] = 0
+			}
+
+			if i > 0 {
+				fftSamples[oI] = lastV*0.4 + fftSamples[oI]*0.6
+			}
+
+			lastV = fftSamples[oI]
 		}
 
 		copy(cg.lastFrequencySamples, fftSamples)

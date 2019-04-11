@@ -44,7 +44,7 @@ func main() {
 	frontend.Init()
 	defer frontend.Destroy()
 
-	frontend.SetCenterFrequency(106300000)
+	frontend.SetCenterFrequency(97700000)
 	//frontend.SetSampleRate(3000000)
 	//frontend.SetGain(60)
 	frontend.Start()

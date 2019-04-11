@@ -9,6 +9,8 @@ function fftSamples(state: any | void | null, action: any) {
     return {
       ...s,
       samples: action.samples,
+      sampleRate: action.sampleRate,
+      centerFrequency: action.centerFrequency,
     };
   }
 

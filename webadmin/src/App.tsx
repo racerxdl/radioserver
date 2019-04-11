@@ -99,7 +99,7 @@ class App extends Component<AppProps, AppState> {
         <div>
           <BrowserRouter>
             <CssBaseline/>
-            <AppBar position="fixed" className={classes.appBar}>
+            <AppBar className={classes.appBar} position="sticky">
               <Toolbar>
                 <IconButton
                   color="inherit"
