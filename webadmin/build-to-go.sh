@@ -7,6 +7,6 @@ echo "Building React App"
 yarn build
 
 echo "Bundling to ../webapp"
-go-bindata -pkg webapp -o "../webapp/webapp.go" -prefix build/ build/*
+go-bindata -pkg webapp -o "../webapp/webapp.go" -prefix build/ build/...
 
 echo "Done!"

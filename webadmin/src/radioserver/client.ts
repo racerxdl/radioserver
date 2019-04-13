@@ -2,14 +2,17 @@ import {grpc} from '@improbable-eng/grpc-web';
 import {RadioServer} from './protocol/server_pb_service';
 import {
   ChannelConfig,
+  Empty,
   FrequencyChannelConfig,
   HelloData,
   HelloReturn,
   IQData,
   LoginData,
   PingData,
+  ServerInfoData,
   StatusType
 } from "./protocol/server_pb";
+import {AddServerInfo} from "../actions/actions";
 
 type IQCallback = (samples: number[] | null, error: string | null) => void;
 
@@ -21,7 +24,10 @@ class RadioClient {
   onSmartIQ?: IQCallback;
   onFFT?: IQCallback;
 
-  constructor(url: string) {
+  _mainLoop: number | void;
+  _store: any;
+
+  constructor(url: string, store: any) {
     this.url = url;
     this.smartIQClient = grpc.client(RadioServer.SmartIQ, {
       host: url,
@@ -49,6 +55,8 @@ class RadioClient {
       }
     });
     this.token = null;
+    this._mainLoop = undefined;
+    this._store = store;
   }
 
   async Ping() {
@@ -68,6 +76,41 @@ class RadioClient {
         },
       })
     });
+  }
+
+  ServerInfo = (): Promise<ServerInfoData.AsObject> => {
+    return new Promise((resolve, reject) => {
+      grpc.unary(RadioServer.ServerInfo, {
+        request: new Empty(),
+        host: this.url,
+        onEnd: (res) => {
+          const {status, statusMessage, message} = res;
+          if (status === grpc.Code.OK && message) {
+            const m = <ServerInfoData>message;
+            resolve(m.toObject());
+          } else {
+            reject(statusMessage);
+          }
+        },
+      });
+    });
+  };
+
+  _loopFunc = async () => {
+    const serverInfo = await this.ServerInfo();
+    this._store.dispatch(AddServerInfo(serverInfo));
+  };
+
+  StartLoop() {
+    this._mainLoop = setInterval(() => this._loopFunc(), 1000);
+  }
+
+  StopLoop() {
+    if (this._mainLoop) {
+      clearInterval(this._mainLoop);
+    }
+
+    this._mainLoop = undefined;
   }
 
   SetOnSmartIQ(cb: (samples: number[] | null, error: string | null) => void) {
