@@ -55,7 +55,7 @@ func main() {
 	log.Info("SIMD Mode: %s", dsp.GetSIMDMode())
 
 	srv := server.MakeRadioServer(frontend)
-	err := srv.Listen(":4050", ":8000")
+	err := srv.Listen(":4050", ":8000", ":4051", ":8001")
 	if err != nil {
 		log.Error("Error listening: %s", err)
 	}

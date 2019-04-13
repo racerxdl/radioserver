@@ -20,7 +20,7 @@ var cgLog = slog.Scope("ChannelGenerator")
 const maxFifoSize = 4096
 const SmartFrameRate = 25
 const SmartLength = 4096
-const FFTAveraging = 4.5
+const FFTAveraging = 2
 
 type OnSmartIQSamples func(samples []complex64)
 type OnIQSamples func(samples []complex64)
