@@ -13,6 +13,7 @@ import (
 
 const airspyMaximumFrequency = 1.768e6
 const airspyMinimumFrequency = 24e6
+const airspyMinSampleRate uint32 = 10e3
 
 var airspyLog = slog.Scope("Airspy Frontend")
 
@@ -61,7 +62,7 @@ func CreateAirspyFrontend(serial uint64) Frontend {
 	var maxDecimationStage = uint32(0)
 	var calcSR = f.maxSampleRate
 
-	for calcSR >= minimumSampleRate {
+	for calcSR >= airspyMinSampleRate {
 		maxDecimationStage += 1
 		var decim = uint32(math.Pow(2, float64(maxDecimationStage)))
 		calcSR = f.maxSampleRate / decim

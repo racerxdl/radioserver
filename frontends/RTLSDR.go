@@ -12,6 +12,7 @@ import (
 
 const rtlsdrMinimumFrequency uint32 = 24e6
 const rtlsdrMaximumFrequency uint32 = 1766e6
+const rtlsdrMinSampleRate uint32 = 10e3
 
 var rtlsdrLog = slog.Scope("RTLSDR Frontend")
 
@@ -56,7 +57,7 @@ func (f *RTLSDRFrontend) Init() bool {
 func (f *RTLSDRFrontend) calcMaxDecimation() uint32 {
 	var stage uint32
 	calcSR := f.maxSampleRate
-	for calcSR >= minimumSampleRate {
+	for calcSR >= rtlsdrMinSampleRate {
 		stage++
 		calcSR = f.maxSampleRate / uint32(math.Pow(2, float64(stage)))
 	}

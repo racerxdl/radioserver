@@ -12,6 +12,7 @@ import (
 
 const limeMaximumFrequency uint32 = 3800e6
 const limeMinimumFrequency uint32 = 100e3
+const limeMinSampleRate uint32 = 10e3
 
 var limeLog = slog.Scope("LimeSDR Frontend")
 
@@ -61,7 +62,7 @@ func CreateLimeSDRFrontend(deviceIdx int) Frontend {
 	var maxDecimationStage = uint32(0)
 	var calcSR = f.maxSampleRate
 
-	for calcSR >= minimumSampleRate {
+	for calcSR >= limeMinSampleRate {
 		maxDecimationStage += 1
 		var decim = uint32(math.Pow(2, float64(maxDecimationStage)))
 		calcSR = f.maxSampleRate / decim
