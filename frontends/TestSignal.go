@@ -1,4 +1,4 @@
-//go:build !limesdr && !airspy
+//go:build !limesdr && !airspy && !rtlsdr
 
 package frontends
 

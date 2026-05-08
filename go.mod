@@ -4,14 +4,14 @@ go 1.25.0
 
 require (
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/golang/protobuf v1.5.4
+	github.com/jpoirier/gortlsdr v2.10.0+incompatible
 	github.com/myriadrf/limedrv v0.0.0-20191110180121-2887b3325268
 	github.com/quan-to/slog v0.1.1
 	github.com/racerxdl/go.fifo v0.0.0-20190324175329-e4cbb374dbb0
 	github.com/racerxdl/segdsp v1.0.0
 	github.com/racerxdl/spy2go v0.0.0-20190103011754-14102c047be5
-	golang.org/x/net v0.53.0
 	google.golang.org/grpc v1.81.0
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
@@ -21,8 +21,8 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/mattn/go-pointer v0.0.0-20180825124634-49522c3f3791 // indirect
 	github.com/racerxdl/fastconvert v0.0.0-20190331022425-fb823eda3cf9 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260504160031-60b97b32f348 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )

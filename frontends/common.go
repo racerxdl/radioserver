@@ -8,6 +8,8 @@ const (
 	SampleTypeS8IQ
 )
 
+const minimumSampleRate uint32 = 10e3
+
 const defaultMinimumFrequency uint32 = 100e3
 const defaultMaximumFrequency uint32 = 3800e6
 
