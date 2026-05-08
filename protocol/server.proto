@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+option go_package = "github.com/racerxdl/radioserver/protocol";
+
 option java_multiple_files = true;
 option java_package = "io.grpc.radioserver";
 option java_outer_classname = "RadioServerProto";

@@ -1,3 +1,5 @@
+//go:build airspy
+
 package frontends
 
 import (

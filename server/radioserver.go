@@ -15,6 +15,8 @@ import (
 var log = slog.Scope("RadioServer")
 
 type RadioServer struct {
+	protocol.UnimplementedRadioServerServer
+
 	serverInfo *protocol.ServerInfoData
 
 	sessions    map[string]*Session

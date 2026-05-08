@@ -33,12 +33,11 @@ func MakeIQData(channelType ChannelType, samples []complex64) *IQData {
 	}
 }
 
-func MakeIQDataWithPool(channelType ChannelType, samples []complex64, pool sync.Pool) *IQData {
-	v := pool.New().([]float32)
+func MakeIQDataWithPool(channelType ChannelType, samples []complex64, pool *sync.Pool) *IQData {
+	v := *pool.New().(*[]float32)
 	if len(v) < len(samples)*2 {
 		v = make([]float32, len(samples)*2)
 	} else if len(v) > len(samples)*2 {
-		// We dont need to discard, just trim
 		v = v[:len(samples)*2]
 	}
 

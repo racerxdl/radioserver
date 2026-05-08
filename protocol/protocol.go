@@ -10,26 +10,26 @@ func (v *VersionData) AsString() string {
 }
 
 func (v *VersionData) ToUint64() uint64 {
-	return GenProtocolVersion(*v)
+	return GenProtocolVersion(v)
 }
 
-func GenProtocolVersion(version VersionData) uint64 {
+func GenProtocolVersion(version *VersionData) uint64 {
 	return uint64(((uint64(version.Major)) << 40) | ((uint64(version.Minor)) << 32) | (uint64(version.Hash)))
 }
 
-func SplitProtocolVersion(protocol uint64) VersionData {
+func SplitProtocolVersion(protocol uint64) *VersionData {
 	major := uint32(((protocol & (0xFF << 40)) >> 40) & 0xFF)
 	minor := uint32(((protocol & (0xFF << 32)) >> 32) & 0xFF)
 	hash := uint32(protocol & 0xFFFFFFFF)
 
-	return VersionData{
+	return &VersionData{
 		Major: major,
 		Minor: minor,
 		Hash:  hash,
 	}
 }
 
-var CurrentProtocolVersion = VersionData{
+var CurrentProtocolVersion = &VersionData{
 	Major: 0,
 	Minor: 1,
 	Hash:  0,

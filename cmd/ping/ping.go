@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver"
 	"github.com/racerxdl/radioserver/protocol"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"math"
 	"net"
@@ -66,9 +67,9 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", *server, *port)
 
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial(addr, opts...)
+	conn, err := grpc.NewClient(addr, opts...)
 
 	if err != nil {
 		log.Fatal(err)
@@ -82,7 +83,7 @@ func main() {
 		serverIp = *server
 	}
 
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	client := protocol.NewRadioServerClient(conn)
 
 	d, _ := proto.Marshal(&protocol.PingData{

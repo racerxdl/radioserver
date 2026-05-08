@@ -1,3 +1,5 @@
+//go:build limesdr
+
 package frontends
 
 import (
@@ -8,8 +10,8 @@ import (
 	"math"
 )
 
-const limeMaximumFrequency = 3.8e6
-const limeMinimumFrequency = 100e3
+const limeMaximumFrequency uint32 = 3800e6
+const limeMinimumFrequency uint32 = 100e3
 
 var limeLog = slog.Scope("LimeSDR Frontend")
 

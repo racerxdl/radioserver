@@ -1,3 +1,5 @@
+//go:build !limesdr && !airspy
+
 package frontends
 
 import (
@@ -89,11 +91,11 @@ func (f *TestSignalFrontend) GetUintDeviceSerial() uint32 {
 }
 
 func (f *TestSignalFrontend) MinimumFrequency() uint32 {
-	return limeMinimumFrequency
+	return defaultMinimumFrequency
 }
 
 func (f *TestSignalFrontend) MaximumFrequency() uint32 {
-	return limeMaximumFrequency
+	return defaultMaximumFrequency
 }
 
 func (f *TestSignalFrontend) GetMaximumBandwidth() uint32 {

@@ -7,6 +7,7 @@ import (
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"time"
 )
 
@@ -64,14 +65,14 @@ func PingPongTest(client protocol.RadioServerClient) {
 func main() {
 	flag.Parse()
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial("localhost:4050", opts...)
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:4050", opts...)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	client := protocol.NewRadioServerClient(conn)
 
 	ctx := context.Background()

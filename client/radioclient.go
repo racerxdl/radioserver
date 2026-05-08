@@ -5,6 +5,8 @@ import (
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver/protocol"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 var log = slog.Scope("RadioClient")
@@ -98,9 +100,9 @@ func (f *RadioClient) setStreamState() {
 
 func (f *RadioClient) smartIqLoop() {
 	ctx := context.Background()
-	cc := *f.smartIqChannelConfig
+	cc := proto.Clone(f.smartIqChannelConfig).(*protocol.ChannelConfig)
 	cc.LoginInfo = f.loginData
-	iqClient, err := f.client.SmartIQ(ctx, &cc)
+	iqClient, err := f.client.SmartIQ(ctx, cc)
 
 	if err != nil {
 		log.Fatal(err)
@@ -121,9 +123,9 @@ func (f *RadioClient) smartIqLoop() {
 
 func (f *RadioClient) iqLoop() {
 	ctx := context.Background()
-	cc := *f.iqChannelConfig
+	cc := proto.Clone(f.iqChannelConfig).(*protocol.ChannelConfig)
 	cc.LoginInfo = f.loginData
-	iqClient, err := f.client.IQ(ctx, &cc)
+	iqClient, err := f.client.IQ(ctx, cc)
 
 	if err != nil {
 		log.Fatal(err)
@@ -152,8 +154,8 @@ func (f *RadioClient) Connect() {
 	log.Debug("Trying to connect")
 
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(f.address, opts...)
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(f.address, opts...)
 
 	if err != nil {
 		log.Fatal(err)

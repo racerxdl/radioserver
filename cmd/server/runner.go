@@ -1,11 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/quan-to/slog"
 	"github.com/racerxdl/radioserver"
-	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/server"
 	"github.com/racerxdl/segdsp/dsp"
 	"os"
@@ -16,10 +14,10 @@ import (
 )
 
 var log = slog.Scope("RadioServer")
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 func main() {
-	flag.Parse()
+	addr, freq, gain := getConfig()
+
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -38,15 +36,14 @@ func main() {
 	}()
 
 	log.Info("Initializing Frontend")
-	//var frontend = frontends.CreateAirspyFrontend(0)
-	var frontend = frontends.CreateLimeSDRFrontend(0)
-	//var frontend = frontends.CreateTestSignalFrontend()
+	frontend := createFrontend()
 	frontend.Init()
 	defer frontend.Destroy()
 
-	frontend.SetCenterFrequency(106300000)
-	//frontend.SetSampleRate(3000000)
-	//frontend.SetGain(60)
+	frontend.SetCenterFrequency(uint32(freq))
+	if gain > 0 {
+		frontend.SetGain(uint8(gain))
+	}
 	frontend.Start()
 
 	defer frontend.Stop()
@@ -55,7 +52,7 @@ func main() {
 	log.Info("SIMD Mode: %s", dsp.GetSIMDMode())
 
 	srv := server.MakeRadioServer(frontend)
-	err := srv.Listen(":4050")
+	err := srv.Listen(addr)
 	if err != nil {
 		log.Error("Error listening: %s", err)
 	}

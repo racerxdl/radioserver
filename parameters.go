@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-var ServerVersion = protocol.VersionData{
+var ServerVersion = &protocol.VersionData{
 	Major: 0,
 	Minor: 1,
 	Hash:  0,

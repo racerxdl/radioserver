@@ -73,9 +73,10 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 	defer s.CG.StopSmartIQ()
 
 	lastNumSamples := 0
-	pool := sync.Pool{
+	pool := &sync.Pool{
 		New: func() interface{} {
-			return make([]float32, lastNumSamples)
+			s := make([]float32, lastNumSamples)
+			return &s
 		},
 	}
 
@@ -93,7 +94,7 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 				lastNumSamples = len(pb.Samples)
 			}
 
-			pool.Put(pb.Samples) // If the size is not correct, MakeIQDataWithPool will discard or trim it
+			pool.Put(&pb.Samples)
 
 			if s.IsFullStopped() {
 				log.Error("Session Expired")
@@ -122,9 +123,10 @@ func (rs *RadioServer) IQ(cc *protocol.ChannelConfig, server protocol.RadioServe
 	defer s.CG.StopIQ()
 
 	lastNumSamples := 0
-	pool := sync.Pool{
+	pool := &sync.Pool{
 		New: func() interface{} {
-			return make([]float32, lastNumSamples)
+			s := make([]float32, lastNumSamples)
+			return &s
 		},
 	}
 
@@ -142,7 +144,7 @@ func (rs *RadioServer) IQ(cc *protocol.ChannelConfig, server protocol.RadioServe
 				lastNumSamples = len(pb.Samples)
 			}
 
-			pool.Put(pb.Samples) // If the size is not correct, MakeIQDataWithPool will discard or trim it
+			pool.Put(&pb.Samples)
 
 			if s.IsFullStopped() {
 				log.Error("Session Expired")
