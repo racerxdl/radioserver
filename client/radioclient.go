@@ -223,7 +223,7 @@ func (f *RadioClient) SetSampleRate(sampleRate uint32) uint32 {
 		}
 	}
 
-	return protocol.Invalid
+	return protocol.StatusInvalid
 }
 
 // SetDecimationStage sets the sample rate by using the number of decimation stages.
@@ -232,7 +232,7 @@ func (f *RadioClient) SetSampleRate(sampleRate uint32) uint32 {
 // decimations that the server supports and applies into the original device sample rate.
 func (f *RadioClient) SetDecimationStage(decimation uint32) uint32 {
 	if f.deviceInfo == nil || decimation > f.deviceInfo.MaximumDecimation {
-		return protocol.Invalid
+		return protocol.StatusInvalid
 	}
 	f.iqChannelConfig.DecimationStage = decimation
 	f.currentSampleRate = f.availableSampleRates[decimation]
@@ -301,7 +301,7 @@ func (f *RadioClient) SetSmartSampleRate(sampleRate uint32) uint32 {
 		}
 	}
 
-	return protocol.Invalid
+	return protocol.StatusInvalid
 }
 
 // SetSmartDecimation sets the sample rate of the Smart IQ by using the number of decimation stages.
@@ -311,7 +311,7 @@ func (f *RadioClient) SetSmartSampleRate(sampleRate uint32) uint32 {
 // Returns Invalid in case of a invalid value in the input
 func (f *RadioClient) SetSmartDecimation(decimation uint32) uint32 {
 	if f.deviceInfo == nil || decimation > f.deviceInfo.MaximumDecimation {
-		return protocol.Invalid
+		return protocol.StatusInvalid
 	}
 	f.smartIqChannelConfig.DecimationStage = decimation
 	f.currentSmartSampleRate = f.availableSampleRates[decimation]
@@ -329,7 +329,7 @@ func (f *RadioClient) GetSmartSampleRate() uint32 {
 // Returns Invalid in case of a invalid value in the input
 func (f *RadioClient) SetGain(gain uint32) uint32 {
 	if f.deviceInfo == nil || gain > f.deviceInfo.MaximumGain {
-		return protocol.Invalid
+		return protocol.StatusInvalid
 	}
 	f.gain = gain
 

@@ -28,7 +28,7 @@ func (rs *RadioServer) Hello(ctx context.Context, hdata *protocol.HelloData) (*p
 	log.Info("Welcome %s!", s.Name)
 
 	return &protocol.HelloReturn{
-		Status: protocol.OK,
+		Status: protocol.StatusOK,
 		Login:  &s.LoginData,
 	}, nil
 }
@@ -71,6 +71,8 @@ func (rs *RadioServer) SmartIQ(cc *protocol.ChannelConfig, server protocol.Radio
 	s.CG.UpdateSettings(protocol.ChannelType_SmartIQ, rs.frontend, cc)
 	s.CG.StartSmartIQ()
 	defer s.CG.StopSmartIQ()
+
+	log.Info("SmartIQ stream started for %s (freq=%d, dec=%d)", s.Name, cc.CenterFrequency, cc.DecimationStage)
 
 	lastNumSamples := 0
 	pool := &sync.Pool{
@@ -121,6 +123,8 @@ func (rs *RadioServer) IQ(cc *protocol.ChannelConfig, server protocol.RadioServe
 	s.CG.UpdateSettings(protocol.ChannelType_IQ, rs.frontend, cc)
 	s.CG.StartIQ()
 	defer s.CG.StopIQ()
+
+	log.Info("IQ stream started for %s (freq=%d, dec=%d)", s.Name, cc.CenterFrequency, cc.DecimationStage)
 
 	lastNumSamples := 0
 	pool := &sync.Pool{

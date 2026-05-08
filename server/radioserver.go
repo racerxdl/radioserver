@@ -7,6 +7,9 @@ import (
 	"github.com/racerxdl/radioserver/frontends"
 	"github.com/racerxdl/radioserver/protocol"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"sync"
 	"time"
@@ -78,9 +81,17 @@ func (rs *RadioServer) Listen(address string) error {
 	rs.grpcServer = grpc.NewServer()
 
 	protocol.RegisterRadioServerServer(rs.grpcServer, rs)
+
+	healthServer := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(rs.grpcServer, healthServer)
+	healthServer.SetServingStatus("radioserver", grpc_health_v1.HealthCheckResponse_SERVING)
+
+	reflection.Register(rs.grpcServer)
+
 	rs.running = true
 	go rs.routines()
 	go rs.serve(lis)
+	log.Info("Listening on %s", address)
 	return nil
 }
 
